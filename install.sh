@@ -7,6 +7,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+echo "INICIANDO..."
+
 # ---->>>> Instalação de pacotes requisitos e atualização do sistema
 export DEBIAN_FRONTEND=noninteractive
 apt update -y
@@ -60,4 +62,5 @@ chmod +x /opt/rustymanager/proxy
 
 ln -sf /opt/rustymanager/manager /usr/local/bin/menu
 
+echo "digite menu para acessar o menu"
 
