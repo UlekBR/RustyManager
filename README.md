@@ -27,28 +27,28 @@ Se você estiver desenvolvendo ou quiser entender melhor as funcionalidades do R
 ### Comandos Disponíveis
 
 - **`--create-user <user> <pass> <days> <limit>`**  
-  Cria um novo usuário SSH com a senha, validade e limite especificados.
+Cria um novo usuário SSH com a senha, validade e limite especificados.
 
 - **`--remove-user <user>`**  
-  Remove um usuário SSH existente.
+Remove um usuário SSH existente.
 
 - **`--generate-test <time in minutes>`**  
-  Gera um teste de conexão SSH por um tempo especificado em minutos.
+Gera um teste de conexão SSH por um tempo especificado em minutos.
 
 - **`--change-limit <user> <limit>`**  
-  Altera o limite de conexões para o usuário especificado.
+Altera o limite de conexões para o usuário especificado.
 
 - **`--change-validity <user> <validity in days>`**  
-  Altera o período de validade da conta do usuário especificado.
+Altera o período de validade da conta do usuário especificado.
 
 - **`--change-pass <user> <pass>`**  
-  Altera a senha do usuário especificado.
+Altera a senha do usuário especificado.
 
 - **`--users-report`**  
-  Gera um relatório de todos os usuários SSH cadastrados.
+Gera um relatório de todos os usuários SSH cadastrados.
 
 - **`--expired-report`**  
-  Gera um relatório de usuários cujo acesso expirou.
+Gera um relatório de usuários cujo acesso expirou.
 
 ## Grupo de atualizações
 https://t.me/rustymanager
