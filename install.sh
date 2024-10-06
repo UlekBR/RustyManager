@@ -41,7 +41,7 @@ apt-get install -y mongodb-org
 systemctl daemon-reload
 systemctl start mongod
 systemctl enable mongod
-mongo --eval 'db = connect("localhost:27017/ssh"); db.createCollection("users");'
+mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCollection("users");'
 
 
 # ---->>>> Instalar rust
@@ -61,10 +61,15 @@ cd /root/RustyManager/HttpProxy
 cargo build --release
 mv ./target/release/HttpProxy /opt/rustymanager/proxy
 
+cd ../../
 chmod +x /opt/rustymanager/manager
 chmod +x /opt/rustymanager/proxy
-
 ln -sf /opt/rustymanager/manager /usr/local/bin/menu
 
+# ---->>>> Removendo o diretorio do RustyManager
+rm -rf /root/RustyManager/
+
+# ---->>>> Instalação finalizada XD
+clear
 echo "digite menu para acessar o menu"
 
