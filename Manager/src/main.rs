@@ -397,8 +397,8 @@ fn main() {
                                                         match port.parse::<usize>() {
                                                             Ok(port) => {
                                                                 match is_port_avaliable(port) {
-                                                                    Ok(true) => { println!("A porta está em uso, digite outra:") },
-                                                                    _ => { break }
+                                                                    Ok(true) => { break },
+                                                                    _ => { println!("A porta está em uso, digite outra:") }
                                                                 }
                                                             }
                                                             Err(..) => {
