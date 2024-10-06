@@ -56,5 +56,6 @@ mv ./target/release/HttpProxy /opt/rustymanager/proxy
 chmod +x /opt/rustymanager/manager
 chmod +x /opt/rustymanager/proxy
 
+ln -sf /opt/rustymanager/manager /usr/local/bin/menu
 
 
