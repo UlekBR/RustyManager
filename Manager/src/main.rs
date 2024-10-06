@@ -6,7 +6,7 @@ use mongodb::{
     sync::{Client}
 };
 use funcs::create_user;
-use crate::funcs::{change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, remove_user, user_already_exists, users_report_json, users_report_vec};
+use crate::funcs::{change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec};
 
 fn main() {
 
@@ -29,6 +29,7 @@ fn main() {
             text = text + "\n 6 - Alterar senha";
             text = text + "\n 7 - Relatorio de usuario";
             text = text + "\n 8 - Relatorio de usuarios expirados";
+            text = text + "\n 9 - Conexões";
             text = text + "\n 0 - Sair";
 
             println!("{}", text);
@@ -352,6 +353,100 @@ fn main() {
                             let mut return_string = String::new();
                             io::stdin().read_line(&mut return_string).expect("");
                         }
+                        9 => {
+                            loop {
+                                std::process::Command::new("clear").status().unwrap();
+                                println!("--> função selecionada: conexões");
+                                let proxy = get_proxy_state(database.clone());
+                                if proxy.enabled {
+                                    println!(" 1 - HttpProxy: {} | Porta: {}", proxy.enabled, proxy.port);
+                                } else {
+                                    println!(" 1 - HttpProxy")
+                                }
+                                let mut option = String::new();
+                                println!("\n --> Selecione uma opção:");
+                                io::stdin().read_line(&mut option).unwrap();
+
+                                match option.trim().parse() {
+                                    Ok(op) => {
+                                        match op {
+                                            1 => {
+                                                if proxy.enabled {
+                                                    std::process::Command::new("clear").status().unwrap();
+                                                    println!("desativando, aguarde...");
+                                                    match enable_or_disable_proxy(0, database.clone()) {
+                                                        Ok(_) => {
+                                                            std::process::Command::new("clear").status().unwrap();
+                                                            println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                                                            let mut return_string = String::new();
+                                                            io::stdin().read_line(&mut return_string).expect("");
+                                                        }
+                                                        Err(_) => {
+                                                            std::process::Command::new("clear").status().unwrap();
+                                                            println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
+                                                            let mut return_string = String::new();
+                                                            io::stdin().read_line(&mut return_string).expect("");
+                                                        }
+                                                    }
+                                                } else {
+                                                    let mut port = String::new();
+                                                    loop {
+                                                        println!("Digite uma porta: (ex: 80)");
+                                                        io::stdin().read_line(&mut port).unwrap();
+                                                        port = port.trim().to_string();
+                                                        match port.parse::<usize>() {
+                                                            Ok(port) => {
+                                                                match is_port_avaliable(port) {
+                                                                    Ok(true) => { println!("A porta está em uso, digite outra:") },
+                                                                    _ => { break }
+                                                                }
+                                                            }
+                                                            Err(..) => {
+                                                                println!("digite uma porta valida");
+                                                            }
+                                                        }
+                                                    }
+
+                                                    match enable_or_disable_proxy(port.parse::<usize>().unwrap(), database.clone()) {
+                                                        Ok(_) => {
+                                                            std::process::Command::new("clear").status().unwrap();
+                                                            println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                                                            let mut return_string = String::new();
+                                                            io::stdin().read_line(&mut return_string).expect("");
+                                                        }
+                                                        Err(_) => {
+                                                            std::process::Command::new("clear").status().unwrap();
+                                                            println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
+                                                            let mut return_string = String::new();
+                                                            io::stdin().read_line(&mut return_string).expect("");
+                                                        }
+                                                    }
+
+
+
+
+                                                }
+                                            }
+                                            _ => {
+                                                std::process::Command::new("clear").status().unwrap();
+                                                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                                                let mut return_string = String::new();
+                                                io::stdin().read_line(&mut return_string).expect("");
+                                            }
+                                        }
+                                    }
+                                    Err(_) => {
+                                        std::process::Command::new("clear").status().unwrap();
+                                        println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                                        let mut return_string = String::new();
+                                        io::stdin().read_line(&mut return_string).expect("");
+                                    }
+                                }
+
+
+                            }
+                       }
+
                         _ => {}
                     }
                 }

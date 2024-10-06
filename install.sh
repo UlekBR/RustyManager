@@ -41,7 +41,7 @@ apt-get install -y mongodb-org
 systemctl daemon-reload
 systemctl start mongod
 systemctl enable mongod
-mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCollection("users");'
+mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCollection("users"); db.createCollection("connections");'
 
 
 # ---->>>> Instalar rust
@@ -65,6 +65,34 @@ cd ../../
 chmod +x /opt/rustymanager/manager
 chmod +x /opt/rustymanager/proxy
 ln -sf /opt/rustymanager/manager /usr/local/bin/menu
+
+
+# ---->>>> Criar o serviço do proxy
+SERVICE_FILE_CONTENT="
+[Unit]
+Description=SshManagerApi
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/rustymanager/proxy
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=proxy
+User=root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=/root
+WorkingDirectory=/opt/rustymanager
+
+[Install]
+WantedBy=multi-user.target
+"
+
+SERVICE_FILE="/etc/systemd/system/proxy.service"
+echo "$SERVICE_FILE_CONTENT" | sudo tee "$SERVICE_FILE" > /dev/null
+sudo systemctl daemon-reload > /dev/null
+
 
 # ---->>>> Removendo o diretorio do RustyManager
 rm -rf /root/RustyManager/

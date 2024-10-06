@@ -1,3 +1,8 @@
+use std::error::Error;
+use std::fmt::format;
+use std::iter::empty;
+use std::net::{SocketAddr, TcpListener};
+use std::os::unix::io;
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 use std::process::{Command};
@@ -277,6 +282,97 @@ pub fn user_already_exists(user: &str) -> bool {
         }
     }
     false
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Connections {
+    pub(crate) proxy: HttpProxy,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HttpProxy {
+    pub(crate) enabled: bool,
+    pub(crate) port: u16,
+}
+
+pub fn get_proxy_state(database: Database) -> HttpProxy {
+    let collection: Collection<Connections> = database.collection("connections");
+
+    let filter = doc! {};
+    if let Some(conn) = collection.find_one(filter).run().unwrap() {
+        conn.proxy
+    } else {
+        HttpProxy {
+            enabled: false,
+            port: 0,
+        }
+    }
+}
+
+pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String, Box<dyn std::error::Error>> {
+    let collection: Collection<Connections> = database.collection("connections");
+
+    let filter = doc! {};
+    let mut connections = collection.find_one(filter.clone()).run().unwrap();
+
+    match connections {
+        Some(mut conn) => {
+            if conn.proxy.enabled {
+                conn.proxy.enabled = false;
+                conn.proxy.port = 0;
+                let commands = [
+                    "systemctl disable proxy.service".to_string(),
+                    "systemctl stop proxy.service".to_string(),
+                ];
+                for command in commands {
+                    run_command(command);
+                }
+            } else {
+                conn.proxy.enabled = true;
+                conn.proxy.port = port as u16;
+                let commands = [
+                    "systemctl enable proxy.service".to_string(),
+                    "systemctl start proxy.service".to_string(),
+                ];
+                for command in commands {
+                    run_command(command);
+                }
+            }
+
+            collection.replace_one(filter, conn.clone()).run().unwrap();
+            Ok(format!("Proxy status updated: {:?}", conn.proxy))
+        },
+        None => {
+            let new_connection = Connections {
+                proxy: HttpProxy {
+                    enabled: true,
+                    port: port as u16,
+                },
+            };
+            collection.insert_one(new_connection).run().unwrap();
+            let commands = [
+                "systemctl enable proxy.service".to_string(),
+                "systemctl start proxy.service".to_string(),
+            ];
+            for command in commands {
+                run_command(command);
+            }
+            Ok(format!("Proxy enabled with port: {}", port))
+        }
+    }
+}
+
+
+pub fn is_port_avaliable(port: usize) -> Result<bool, bool> {
+    match TcpListener::bind(format!("0.0.0.0:{}", port)) {
+        Ok(_) => {
+            Ok(true)
+        },
+        Err(_) => {
+            Ok(false)
+        }
+    }
 }
 
 fn run_command(command: String) -> &'static str {

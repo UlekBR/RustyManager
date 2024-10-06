@@ -1,28 +1,50 @@
 use std::error::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use mongodb::bson::{doc};
+use mongodb::{Client, Collection};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Connections {
+    pub(crate) proxy: HttpProxy,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HttpProxy {
+    pub(crate) enabled: bool,
+    pub(crate) port: u16,
+}
 
 const BUFLEN: usize = 4096 * 16;
 const DEFAULT_HOST: &str = "127.0.0.1:22";
-
-
 const WS_RESPONSE: &[u8] = b"HTTP/1.1 101 @RustyManager\r\n\r\n";
 const RESPONSE: &[u8] = b"HTTP/1.1 200 @RustyManager\r\n\r\n";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind("0.0.0.0:80").await?;
-    println!("Proxy server listening");
+    let uri = "mongodb://127.0.0.1:27017/";
+    let client = Client::with_uri_str(uri).expect("error on mongodb connect");
+    let database = client.database("ssh");
+    let collection: Collection<Connections> = database.collection("connections");
 
-    loop {
-        let (client_socket, _) = listener.accept().await?;
-        tokio::spawn(async move {
-            if let Err(e) = handle_client(client_socket).await {
-                eprintln!("Connection error: {}", e);
+    let filter = doc! {};
+    if let Some(conn) = collection.find_one(filter).run().unwrap() {
+        let proxy: HttpProxy = conn.proxy;
+        if proxy.enabled {
+            let listener = TcpListener::bind(format!("0.0.0.0:{}", proxy.port)).await?;
+            println!("Proxy server listening");
+            loop {
+                let (client_socket, _) = listener.accept().await?;
+                tokio::spawn(async move {
+                    if let Err(e) = handle_client(client_socket).await {
+                        eprintln!("Connection error: {}", e);
+                    }
+                });
             }
-        });
-    }
+        }
 
+    }
 }
 
 async fn handle_client(mut client_socket: TcpStream) -> Result<(), Box<dyn Error>> {
