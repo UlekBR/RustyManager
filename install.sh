@@ -7,11 +7,13 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-
-# ---->>>> Instalação do MongoDB
+# ---->>>> Instalação de pacotes requisitos e atualização do sistema
+export DEBIAN_FRONTEND=noninteractive
 apt update -y
+apt upgrade -y
 apt-get install gnupg curl build-essential git -y
 
+# ---->>>> Instalação do MongoDB
 VERSION=$(lsb_release -rs)
 case $VERSION in
     24.*)
