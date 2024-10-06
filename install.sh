@@ -54,12 +54,12 @@ mkdir /opt/rustymanager
 git clone https://github.com/UlekBR/RustyManager.git
 
 cd /root/RustyManager/Manager
-cargo build 
-mv ./target/debug/SshScript /opt/rustymanager/manager
+cargo build --release
+mv ./target/release/SshScript /opt/rustymanager/manager
 
 cd /root/RustyManager/HttpProxy
-cargo build 
-mv ./target/debug/HttpProxy /opt/rustymanager/proxy
+cargo build --release
+mv ./target/release/HttpProxy /opt/rustymanager/proxy
 
 cd ../../
 chmod +x /opt/rustymanager/manager
@@ -88,7 +88,6 @@ WorkingDirectory=/opt/rustymanager
 [Install]
 WantedBy=multi-user.target
 "
-
 SERVICE_FILE="/etc/systemd/system/proxy.service"
 echo "$SERVICE_FILE_CONTENT" | sudo tee "$SERVICE_FILE" > /dev/null
 sudo systemctl daemon-reload > /dev/null
