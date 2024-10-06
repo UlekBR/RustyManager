@@ -19,12 +19,15 @@ apt-get install gnupg curl build-essential git -y
 VERSION=$(lsb_release -rs)
 case $VERSION in
     24.*)
+        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
         echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
         ;;
     22.*)
+        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
         echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
         ;;
     20.*)
+        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
         ;;
     *)
@@ -43,6 +46,7 @@ mongo --eval 'db = connect("localhost:27017/ssh"); db.createCollection("users");
 
 # ---->>>> Instalar rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+."$HOME/.cargo/env"
 
 # ---->>>> Instalar o RustyManager
 mkdir /opt/
