@@ -24,16 +24,20 @@ const RESPONSE: &[u8] = b"HTTP/1.1 200 @RustyManager\r\n\r\n";
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let uri = "mongodb://127.0.0.1:27017/";
-    let client = Client::with_uri_str(uri).expect("error on mongodb connect");
+    let client = Client::with_uri_str(uri).await?;
     let database = client.database("ssh");
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
-    if let Some(conn) = collection.find_one(filter).run().unwrap() {
-        let proxy: HttpProxy = conn.proxy;
+    let connection = collection.find_one(filter).await?;
+
+    if let Some(connections) = connection {
+        let proxy: HttpProxy = connections.proxy;
         if proxy.enabled {
-            let listener = TcpListener::bind(format!("0.0.0.0:{}", proxy.port)).await?;
-            println!("Proxy server listening");
+            let addr = format!("0.0.0.0:{}", proxy.port);
+            let listener = TcpListener::bind(&addr).await?;
+            println!("Proxy server listening on {}", addr);
+
             loop {
                 let (client_socket, _) = listener.accept().await?;
                 tokio::spawn(async move {
@@ -43,8 +47,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 });
             }
         }
-
+    } else {
+        eprintln!("No connection settings found in the database.");
     }
+
+    Ok(())
 }
 
 async fn handle_client(mut client_socket: TcpStream) -> Result<(), Box<dyn Error>> {
