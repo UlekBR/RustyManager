@@ -54,12 +54,12 @@ mkdir /opt/rustymanager
 git clone https://github.com/UlekBR/RustyManager.git
 
 cd /root/RustyManager/Manager
-cargo build --release
-mv ./target/release/SshScript /opt/rustymanager/manager
+cargo build 
+mv ./target/debug/SshScript /opt/rustymanager/manager
 
 cd /root/RustyManager/HttpProxy
-cargo build --release
-mv ./target/release/HttpProxy /opt/rustymanager/proxy
+cargo build 
+mv ./target/debug/HttpProxy /opt/rustymanager/proxy
 
 cd ../../
 chmod +x /opt/rustymanager/manager

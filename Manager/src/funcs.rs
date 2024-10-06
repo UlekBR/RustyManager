@@ -310,7 +310,7 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
-    let mut connections = collection.find_one(filter.clone()).run().unwrap();
+    let connections = collection.find_one(filter.clone()).run().unwrap();
 
     match connections {
         Some(mut conn) => {

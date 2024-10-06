@@ -363,6 +363,7 @@ fn main() {
                                 } else {
                                     println!(" 1 - HttpProxy")
                                 }
+                                println!(" 0 - Voltar ao menu");
                                 let mut option = String::new();
                                 println!("\n --> Selecione uma opção:");
                                 io::stdin().read_line(&mut option).unwrap();
@@ -426,6 +427,9 @@ fn main() {
 
 
                                                 }
+                                            }
+                                            0 => {
+                                                break
                                             }
                                             _ => {
                                                 std::process::Command::new("clear").status().unwrap();
