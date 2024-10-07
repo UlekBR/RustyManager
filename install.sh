@@ -70,7 +70,7 @@ ln -sf /opt/rustymanager/manager /usr/local/bin/menu
 # ---->>>> Criar o serviço do proxy
 SERVICE_FILE_CONTENT="
 [Unit]
-Description=SshManagerApi
+Description=HttpProxy
 After=network.target
 
 [Service]
