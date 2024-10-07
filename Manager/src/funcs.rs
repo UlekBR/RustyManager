@@ -384,6 +384,21 @@ fn run_command(command: String) -> &'static str {
     "sucess"
 }
 
+pub fn run_command_and_get_output(command: &str) -> String {
+    let exec = Command::new("bash")
+        .arg("-c")
+        .arg(command)
+        .output()
+        .expect("Failed to execute command");
+
+    if !exec.status.success() {
+        let error_message = std::str::from_utf8(&exec.stderr).unwrap_or("Error converting error message");
+        return format!("Error: {}", error_message);
+    }
+
+    let output = std::str::from_utf8(&exec.stdout).unwrap_or("Error converting output");
+    output.trim().to_string()
+}
 fn days_to_expire_date(days: usize) -> String {
     let now: DateTime<Local> = Local::now();
     let expiry_date = now + Duration::days(days as i64);

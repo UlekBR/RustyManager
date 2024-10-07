@@ -5,8 +5,7 @@ use chrono::DateTime;
 use mongodb::{
     sync::{Client}
 };
-use funcs::create_user;
-use crate::funcs::{change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output};
 
 fn main() {
 
@@ -19,20 +18,34 @@ fn main() {
     if args.len() <= 1 {
         loop {
             std::process::Command::new("clear").status().unwrap();
-            let mut text = " > Sim, mais um gerenciador ssh :0".to_owned();
+            let options = vec![
+                "Criar usuario",
+                "Remover usuario",
+                "Gerar teste",
+                "Alterar limite",
+                "Alterar validade",
+                "Alterar senha",
+                "Relatorio de usuario",
+                "Relatorio de usuarios expirados",
+                "Conexões",
+                "Sair",
+            ];
 
-            text = text + "\n 1 - Criar usuario";
-            text = text + "\n 2 - Remover usuario";
-            text = text + "\n 3 - Gerar teste";
-            text = text + "\n 4 - Alterar limite";
-            text = text + "\n 5 - Alterar validade";
-            text = text + "\n 6 - Alterar senha";
-            text = text + "\n 7 - Relatorio de usuario";
-            text = text + "\n 8 - Relatorio de usuarios expirados";
-            text = text + "\n 9 - Conexões";
-            text = text + "\n 0 - Sair";
+            println!("=== RustyManager ===");
+            let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
+            println!("Usuarios Online: {}", online);
+            let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
+            println!("Usuarios Criados: {}", created);
+            println!("====================");
 
-            println!("{}", text);
+            for (i, option) in options.iter().enumerate() {
+                if i == options.len() - 1 {
+                    println!("0 - {}", option);
+                } else {
+                    println!("{} - {}", i + 1, option);
+                }
+            }
+
 
             let mut option = String::new();
             println!("\n --> Selecione uma opção:");
