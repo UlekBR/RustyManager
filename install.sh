@@ -30,8 +30,12 @@ case $VERSION in
         wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
         echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
         ;;
+    18.*)
+        wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-6.0.gpg
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        ;;
     *)
-        echo "Versão do Ubuntu não suportada, use o 20, 22, ou 24"
+        echo "Versão do Ubuntu não suportada, use o 18, 20, 22, ou 24"
         exit 1
         ;;
 esac
@@ -46,7 +50,7 @@ mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCo
 
 # ---->>>> Instalar rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-."$HOME/.cargo/env"
+. "$HOME/.cargo/env"
 
 # ---->>>> Instalar o RustyManager
 mkdir /opt/
