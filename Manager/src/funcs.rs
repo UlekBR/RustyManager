@@ -284,6 +284,12 @@ pub fn user_already_exists(user: &str) -> bool {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: HttpProxy,
+    pub(crate) badvpn: BadVpn
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BadVpn {
+    pub(crate) ports: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -345,6 +351,9 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
                     enabled: true,
                     port: port as u16,
                 },
+                badvpn: BadVpn {
+                    ports: Vec::new()
+                }
             };
             collection.insert_one(new_connection).run().unwrap();
             let commands = [

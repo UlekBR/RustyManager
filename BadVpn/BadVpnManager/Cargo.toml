@@ -1,0 +1,11 @@
+[package]
+name = "BadVpnManager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.210", features = ["derive"] }
+
+[dependencies.mongodb]
+version = "3.0.1"
+features = ["sync"]

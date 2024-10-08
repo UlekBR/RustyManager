@@ -9,36 +9,51 @@ fi
 
 echo "INICIANDO..."
 
+# ---->>>> Verificação do sistema
+VERSION=$(lsb_release -rs)
+
+case $VERSION in
+    24.*)
+        echo "Versão suportada: Ubuntu 24"
+        REPO_URL="noble"
+        MONGO_VERSION="8.0"
+        ;;
+    22.*)
+        echo "Versão suportada: Ubuntu 22"
+        REPO_URL="jammy"
+        MONGO_VERSION="8.0"
+        ;;
+    20.*)
+        echo "Versão suportada: Ubuntu 20"
+        REPO_URL="focal"
+        MONGO_VERSION="8.0"
+        ;;
+    18.*)
+        echo "Versão suportada: Ubuntu 18"
+        REPO_URL="bionic"
+        MONGO_VERSION="6.0"
+        ;;
+    *)
+        echo "Versão do Ubuntu não suportada. Use 18, 20, 22 ou 24."
+        exit 1
+        ;;
+esac
+
 # ---->>>> Instalação de pacotes requisitos e atualização do sistema
 export DEBIAN_FRONTEND=noninteractive
 apt update -y
 apt upgrade -y
-apt-get install gnupg curl build-essential git -y
+apt-get install gnupg curl build-essential git cmake -y
 
 # ---->>>> Instalação do MongoDB
-VERSION=$(lsb_release -rs)
-case $VERSION in
-    24.*)
-        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-        ;;
-    22.*)
-        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-        ;;
-    20.*)
-        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-        ;;
-    18.*)
-        wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-6.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-        ;;
-    *)
-        echo "Versão do Ubuntu não suportada, use o 18, 20, 22, ou 24"
-        exit 1
-        ;;
-esac
+if [ "$MONGO_VERSION" == "8.0" ]; then
+    wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu $REPO_URL/mongodb-org/$MONGO_VERSION multiverse" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
+else
+    wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-6.0.gpg
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu $REPO_URL/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+fi
+
 
 apt update -y
 apt-get install -y mongodb-org
@@ -57,17 +72,35 @@ mkdir /opt/
 mkdir /opt/rustymanager
 git clone https://github.com/UlekBR/RustyManager.git
 
+# manager
 cd /root/RustyManager/Manager
 cargo build --release
 mv ./target/release/SshScript /opt/rustymanager/manager
 
+# httproxy
 cd /root/RustyManager/HttpProxy
 cargo build --release
 mv ./target/release/HttpProxy /opt/rustymanager/proxy
 
-cd ../../
+# badvpn
+cd /root/RustyManager/BadVpn/BadVpnManager
+cargo build --release
+mv ./target/release/BadVpnManager /opt/rustymanager/badmanager
+
+cd ..
+mkdir /root/RustyManager/BadVpn/badvpn/badvpn-build
+cd  /root/RustyManager/BadVpn/badvpn/badvpn-build
+cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 &
+wait
+make &
+wait
+mv udpgw/badvpn-udpgw /opt/rustymanager/badvpn
+
+cd ../../../
 chmod +x /opt/rustymanager/manager
 chmod +x /opt/rustymanager/proxy
+chmod +x /opt/rustymanager/badmanager
+chmod +x /opt/rustymanager/badvpn
 ln -sf /opt/rustymanager/manager /usr/local/bin/menu
 
 
