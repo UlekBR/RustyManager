@@ -1,0 +1,3 @@
+[submodule "BadVpn/badvpn"]
+	path = BadVpn/badvpn
+	url = https://github.com/ambrop72/badvpn.git
