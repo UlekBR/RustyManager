@@ -73,7 +73,7 @@ pub struct Connections {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BadVpn {
-    pub(crate) ports: Vec<usize>,
+    pub(crate) ports: Vec<u16>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -90,7 +90,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> 
 
     match connections {
         Some(mut conn) => {
-            conn.badvpn.ports.push(port);
+            conn.badvpn.ports.push(port as u16);
             collection.replace_one(filter, conn.clone()).run().unwrap();
             Ok(())
         },
@@ -101,7 +101,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> 
                     port: 0,
                 },
                 badvpn: BadVpn {
-                    ports: Vec::from([port])
+                    ports: Vec::from([port as u16])
                 }
             };
             collection.insert_one(new_connection).run().unwrap();

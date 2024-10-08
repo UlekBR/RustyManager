@@ -289,7 +289,7 @@ pub struct Connections {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BadVpn {
-    pub(crate) ports: Vec<usize>,
+    pub(crate) ports: Vec<u16>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
