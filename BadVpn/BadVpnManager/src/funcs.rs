@@ -1,5 +1,5 @@
 use std::fmt::format;
-use std::fs;
+use std::{fs, io};
 use std::io::Write;
 use std::net::TcpListener;
 use std::process::Command;
@@ -18,7 +18,7 @@ pub fn is_port_avaliable(port: usize) -> Result<bool, bool> {
     }
 }
 
-pub fn add_port(port: usize) -> Result<Ok(), Err()> {
+pub fn add_port(port: usize) -> Result<(), io::Error> {
     let service_file_content = format!(r#"
 [Unit]
 Description=BadVpn{}
@@ -49,18 +49,18 @@ WantedBy=multi-user.target
         format!("systemctl start badvpn{}.service", port)
     ];
     for command in commands {
-        run_command(command)
+        run_command(command);
     }
     Ok(())
 }
 
-pub fn del_port(port: usize) -> Result<Ok(), Err()> {
+pub fn del_port(port: usize) -> Result<(), io::Error> {
     let commands = [
         format!("systemctl disable badvpn{}.service", port),
         format!("systemctl stop badvpn{}.service", port)
     ];
     for command in commands {
-        run_command(command)
+        run_command(command);
     }
     fs::remove_file(format!("/etc/systemd/system/badvpn{}.service", port))
 }
@@ -82,7 +82,7 @@ pub struct HttpProxy {
     pub(crate) port: u16,
 }
 
-pub fn add_port_in_db(database: Database, port: usize) -> Result<Ok(), Err()> {
+pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> {
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
@@ -110,7 +110,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<Ok(), Err()> {
     }
 }
 
-pub fn del_port_in_db(database: Database, port: usize) -> Result<(), Err()> {
+pub fn del_port_in_db(database: Database, port: usize) -> Result<(), io::Error> {
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
@@ -125,10 +125,11 @@ pub fn del_port_in_db(database: Database, port: usize) -> Result<(), Err()> {
             Ok(())
         },
         None => {
-            Err(())
+            Err(io::Error::new(io::ErrorKind::NotFound, "No connections found"))
         }
     }
 }
+
 
 
 fn run_command(command: String) -> &'static str {

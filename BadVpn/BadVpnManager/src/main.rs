@@ -17,7 +17,7 @@ fn main() {
                 let port =  (&args[2]).as_str();
                 match port.parse::<usize>() {
                     Ok(port) => {
-                        if is_port_avaliable(port) {
+                        if is_port_avaliable(port).expect("error on check port use") {
                             add_port(port).expect("error on enable port");
                             add_port_in_db(database, port).expect("error on insert port in db");
                         }
@@ -31,7 +31,7 @@ fn main() {
                 let port =  (&args[2]).as_str();
                 match port.parse::<usize>() {
                     Ok(port) => {
-                        if !is_port_avaliable(port) {
+                        if !is_port_avaliable(port).expect("error on check port use")  {
                             del_port(port).expect("error on disable port");
                             del_port_in_db(database, port).expect("error on remove port in db");
                         }
