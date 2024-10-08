@@ -1,11 +1,12 @@
 mod funcs;
 
 use std::{env, io};
+use std::num::ParseIntError;
 use chrono::DateTime;
 use mongodb::{
     sync::{Client}
 };
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port};
 
 fn main() {
 
@@ -376,6 +377,7 @@ fn main() {
                                 } else {
                                     println!(" 1 - HttpProxy")
                                 }
+                                println!(" 2 - BadVpn");
                                 println!(" 0 - Voltar ao menu");
                                 let mut option = String::new();
                                 println!("\n --> Selecione uma opção:");
@@ -439,6 +441,104 @@ fn main() {
 
 
 
+                                                }
+                                            }
+                                            2 => {
+                                                loop {
+                                                    std::process::Command::new("clear").status().unwrap();
+                                                    println!("--> função selecionada: badvpn");
+                                                    let conn = get_connections(database.clone());
+                                                    println!("Portas ativas:");
+                                                    if conn.badvpn.ports.is_empty() {
+                                                        println!(" - Nenhuma porta está ativa")
+                                                    } else {
+                                                        for port in conn.badvpn.ports {
+                                                            println!(" - {}", port)
+                                                        }
+                                                    }
+                                                    println!();
+                                                    println!("1 - Abrir porta badvpn");
+                                                    println!("2 - Fechar porta badvpn");
+                                                    println!("0 - Voltar");
+                                                    let mut option = String::new();
+                                                    println!("\n --> Selecione uma opção:");
+                                                    io::stdin().read_line(&mut option).unwrap();
+                                                    match option.trim().parse() {
+                                                        Ok(op) => {
+                                                            match op {
+                                                                1 => {
+                                                                    let mut port = String::new();
+                                                                    loop {
+                                                                        println!("Digite a porta: ");
+                                                                        io::stdin().read_line(&mut port).unwrap();
+                                                                        port = port.trim().to_string();
+                                                                        match port.parse::<usize>() {
+                                                                            Ok(port) => {
+                                                                                if !is_port_avaliable(port).unwrap() {
+                                                                                    println!("essa porta já está em uso, digite outra:")
+                                                                                } else {
+                                                                                    break
+                                                                                }
+                                                                            }
+                                                                            Err(..) => {
+                                                                                println!("digite uma porta valida");
+                                                                            }
+                                                                        }
+
+                                                                    }
+
+                                                                    enable_badvpn_port(port);
+
+                                                                    std::process::Command::new("clear").status().unwrap();
+                                                                    println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                                                                    let mut return_string = String::new();
+                                                                    io::stdin().read_line(&mut return_string).expect("");
+
+                                                                }
+                                                                2 => {
+                                                                    let mut port = String::new();
+                                                                    loop {
+                                                                        println!("Digite a porta: ");
+                                                                        io::stdin().read_line(&mut port).unwrap();
+                                                                        port = port.trim().to_string();
+                                                                        match port.parse::<usize>() {
+                                                                            Ok(port) => {
+                                                                                if is_port_avaliable(port).unwrap() {
+                                                                                    println!("essa porta não está em uso, digite outra:")
+                                                                                } else {
+                                                                                    break
+                                                                                }
+                                                                            }
+                                                                            Err(..) => {
+                                                                                println!("digite uma porta valida");
+                                                                            }
+                                                                        }
+
+                                                                    }
+
+                                                                    enable_badvpn_port(port);
+
+                                                                    std::process::Command::new("clear").status().unwrap();
+                                                                    println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                                                                    let mut return_string = String::new();
+                                                                    io::stdin().read_line(&mut return_string).expect("");
+
+                                                                }
+                                                                0 => {
+                                                                    break
+                                                                }
+                                                                _ => {
+                                                                    continue
+                                                                }
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            std::process::Command::new("clear").status().unwrap();
+                                                            println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                                                            let mut return_string = String::new();
+                                                            io::stdin().read_line(&mut return_string).expect("");
+                                                        }
+                                                    }
                                                 }
                                             }
                                             0 => {

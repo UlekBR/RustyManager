@@ -298,6 +298,25 @@ pub struct HttpProxy {
     pub(crate) port: u16,
 }
 
+pub fn get_connections(database: Database) -> Connections {
+    let collection: Collection<Connections> = database.collection("connections");
+
+    let filter = doc! {};
+    if let Some(conn) = collection.find_one(filter).run().unwrap() {
+        conn
+    } else {
+        Connections {
+            proxy: HttpProxy {
+                enabled: false,
+                port: 0,
+            },
+            badvpn: BadVpn {
+                ports: Vec::new()
+            }
+        }
+    }
+}
+
 pub fn get_proxy_state(database: Database) -> HttpProxy {
     let collection: Collection<Connections> = database.collection("connections");
 
@@ -378,6 +397,14 @@ pub fn is_port_avaliable(port: usize) -> Result<bool, bool> {
             Ok(false)
         }
     }
+}
+
+pub fn enable_badvpn_port(port: String) {
+    run_command(format!("/opt/rustymanager/badmanager --enable-port {}", port));
+}
+
+pub fn disable_badvpn_port(port: String) {
+    run_command(format!("/opt/rustymanager/badmanager --disable-port {}", port));
 }
 
 fn run_command(command: String) -> &'static str {
