@@ -19,7 +19,7 @@ fn main() {
                     Ok(port) => {
                         if is_port_avaliable(port).expect("error on check port use") {
                             add_port(port).expect("error on enable port");
-                            add_port_in_db(database, port).expect("error on insert port in db");
+                            add_port_in_db(database, port as u16).expect("error on insert port in db");
                         }
                     }
                     Err(..) => {
@@ -33,7 +33,7 @@ fn main() {
                     Ok(port) => {
                         if !is_port_avaliable(port).expect("error on check port use")  {
                             del_port(port).expect("error on disable port");
-                            del_port_in_db(database, port).expect("error on remove port in db");
+                            del_port_in_db(database, port as u16).expect("error on remove port in db");
                         }
                     }
                     Err(..) => {

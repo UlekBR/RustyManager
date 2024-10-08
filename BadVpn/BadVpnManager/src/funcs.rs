@@ -82,7 +82,7 @@ pub struct HttpProxy {
     pub(crate) port: u16,
 }
 
-pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> {
+pub fn add_port_in_db(database: Database, port: u16) -> Result<(), io::Error> {
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
@@ -90,7 +90,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> 
 
     match connections {
         Some(mut conn) => {
-            conn.badvpn.ports.push(port as u16);
+            conn.badvpn.ports.push(port);
             collection.replace_one(filter, conn.clone()).run().unwrap();
             Ok(())
         },
@@ -101,7 +101,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> 
                     port: 0,
                 },
                 badvpn: BadVpn {
-                    ports: Vec::from([port as u16])
+                    ports: Vec::from([port])
                 }
             };
             collection.insert_one(new_connection).run().unwrap();
@@ -110,7 +110,7 @@ pub fn add_port_in_db(database: Database, port: usize) -> Result<(), io::Error> 
     }
 }
 
-pub fn del_port_in_db(database: Database, port: usize) -> Result<(), io::Error> {
+pub fn del_port_in_db(database: Database, port: u16) -> Result<(), io::Error> {
     let collection: Collection<Connections> = database.collection("connections");
 
     let filter = doc! {};
