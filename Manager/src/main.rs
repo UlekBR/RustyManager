@@ -1,7 +1,6 @@
 mod funcs;
 
 use std::{env, io};
-use std::num::ParseIntError;
 use chrono::DateTime;
 use mongodb::{
     sync::{Client}
