@@ -185,12 +185,14 @@ fn main() {
                             let gen = generate_test(minutes.parse().unwrap(), database.clone());
                             match gen.as_str() {
                                 "error on insert user in db" => {
-                                    println!("o usuario foi criado, mas ocorreu um erro para salvar ele na db\n\n> Pressione qualquer tecla para voltar ao menu");
+                                    std::process::Command::new("clear").status().unwrap();
+                                    println!("o teste foi criado, mas ocorreu um erro para salvar ele na db\n\n> Pressione qualquer tecla para voltar ao menu");
                                     let mut return_string = String::new();
                                     io::stdin().read_line(&mut return_string).expect("");
                                 }
                                 _ => {
                                     if gen.contains("user: ") {
+                                        std::process::Command::new("clear").status().unwrap();
                                         let mut text = ">>> Teste gerado com sucesso".to_owned();
                                         let user = gen.split("user: ").collect::<Vec<&str>>()[1].split(" |").collect::<Vec<&str>>()[0];
                                         text = text + "\n - Usuario: " + &*user;
@@ -240,6 +242,7 @@ fn main() {
                             let change = change_limit(&*user, limit.parse().unwrap(), false, database.clone());
                             match change.as_str() {
                                 "error on update user in db" => {
+                                    std::process::Command::new("clear").status().unwrap();
                                     println!("ocorreu algum erro, tente novamente\n\n> Pressione qualquer tecla para voltar ao menu");
                                     let mut return_string = String::new();
                                     io::stdin().read_line(&mut return_string).expect("");
@@ -247,6 +250,7 @@ fn main() {
 
                                 _ => {
                                     if change.contains("changed") {
+                                        std::process::Command::new("clear").status().unwrap();
                                         println!(">>> Limite alterado com sucesso\n\n> Pressione qualquer tecla para voltar ao menu");
                                         let mut return_string = String::new();
                                         io::stdin().read_line(&mut return_string).expect("");
@@ -291,6 +295,7 @@ fn main() {
                             let change = change_validity(&*user, days.parse().unwrap(), false, database.clone());
                             match change.as_str() {
                                 "error on update user in db" => {
+                                    std::process::Command::new("clear").status().unwrap();
                                     println!("a validade foi alterada, mas ocorreu algum erro ao tentar atualizar ele na db\n\n> Pressione qualquer tecla para voltar ao menu");
                                     let mut return_string = String::new();
                                     io::stdin().read_line(&mut return_string).expect("");
@@ -298,6 +303,7 @@ fn main() {
 
                                 _ => {
                                     if change.contains("changed") {
+                                        std::process::Command::new("clear").status().unwrap();
                                         println!(">>> Validade alterada com sucesso\n\n> Pressione qualquer tecla para voltar ao menu");
                                         let mut return_string = String::new();
                                         io::stdin().read_line(&mut return_string).expect("");
@@ -330,6 +336,7 @@ fn main() {
                             let change = change_pass(&*user, &*pass, false, database.clone());
                             match change.as_str() {
                                 "error on update user in db" => {
+                                    std::process::Command::new("clear").status().unwrap();
                                     println!("a senha foi alterada, mas ocorreu algum erro ao tentar atualizar ele na db\n\n> Pressione qualquer tecla para voltar ao menu");
                                     let mut return_string = String::new();
                                     io::stdin().read_line(&mut return_string).expect("");
@@ -337,6 +344,7 @@ fn main() {
 
                                 _ => {
                                     if change.contains("changed") {
+                                        std::process::Command::new("clear").status().unwrap();
                                         println!(">>> Senha alterada com sucesso\n\n> Pressione qualquer tecla para voltar ao menu");
                                         let mut return_string = String::new();
                                         io::stdin().read_line(&mut return_string).expect("");

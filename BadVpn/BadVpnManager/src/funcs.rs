@@ -1,8 +1,8 @@
-use std::fmt::format;
 use std::{fs, io};
 use std::io::Write;
 use std::net::TcpListener;
 use std::process::Command;
+
 use mongodb::bson::doc;
 use mongodb::sync::{Collection, Database};
 use serde::{Deserialize, Serialize};
