@@ -36,11 +36,12 @@ fn main() {
             println!("Usuarios Online: {}", online);
             let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
             println!("Usuarios Criados: {}", created);
-            let memory = run_command_and_get_output("free | awk 'NR==2{printf \"%.2f%\n\", $3*100/$2 }'");
+            let memory = run_command_and_get_output("free | awk 'NR==2{printf \"%.2f%%\\n\", $3*100/$2}'");
             println!("Memoria em uso: {}", memory);
             let cpu = run_command_and_get_output("top -b -n 1 | grep \"Cpu(s)\" | awk '{print $2 + $4 \"%\"}'");
             println!("Processador em uso: {}", cpu);
             println!("====================");
+
 
             for (i, option) in options.iter().enumerate() {
                 if i == options.len() - 1 {
