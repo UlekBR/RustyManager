@@ -6,7 +6,7 @@ use chrono::DateTime;
 use mongodb::{
     sync::{Client}
 };
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port};
 
 fn main() {
 
@@ -528,7 +528,7 @@ fn main() {
 
                                                                     }
 
-                                                                    enable_badvpn_port(port);
+                                                                    disable_badvpn_port(port);
 
                                                                     std::process::Command::new("clear").status().unwrap();
                                                                     println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
