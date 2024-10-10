@@ -198,6 +198,6 @@ sudo systemctl daemon-reload > /dev/null
 # ---->>>> Removendo o diretorio do RustyManager
 rm -rf /root/RustyManager/
 
-# ---->>>> Instalação finalizada XD
+# ---->>>> Instalação finalizada :)
 clear
 echo "digite menu para acessar o menu"
