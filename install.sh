@@ -20,24 +20,28 @@ case $OS_NAME in
                 echo "Versão suportada: Ubuntu 24"
                 REPO_SYSTEM="ubuntu"
                 REPO_URL="noble"
+                REPO_TYPE="multiverse"
                 MONGO_VERSION="8.0"
                 ;;
             22.*)
                 echo "Versão suportada: Ubuntu 22"
                 REPO_SYSTEM="ubuntu"
                 REPO_URL="jammy"
+                REPO_TYPE="multiverse"
                 MONGO_VERSION="8.0"
                 ;;
             20.*)
                 echo "Versão suportada: Ubuntu 20"
                 REPO_SYSTEM="ubuntu"
                 REPO_URL="focal"
+                REPO_TYPE="multiverse"
                 MONGO_VERSION="8.0"
                 ;;
             18.*)
                 echo "Versão suportada: Ubuntu 18"
                 REPO_SYSTEM="ubuntu"
                 REPO_URL="bionic"
+                REPO_TYPE="multiverse"
                 MONGO_VERSION="6.0"
                 ;;
             *)
@@ -48,28 +52,32 @@ case $OS_NAME in
         ;;
     Debian)
         case $VERSION in
-            12.*)
+            12*)
                 echo "Versão suportada: Debian 12"
                 REPO_SYSTEM="debian"
                 REPO_URL="bookworm"
+                REPO_TYPE="main"
                 MONGO_VERSION="8.0"
                 ;;
-            11.*)
+            11*)
                 echo "Versão suportada: Debian 11"
                 REPO_SYSTEM="debian"
                 REPO_URL="bullseye"
+                REPO_TYPE="main"
                 MONGO_VERSION="7.0"
                 ;;
-            10.*)
+            10*)
                 echo "Versão suportada: Debian 10"
                 REPO_SYSTEM="debian"
                 REPO_URL="buster"
+                REPO_TYPE="main"
                 MONGO_VERSION="6.0"
                 ;;
-            9.*)
+            9*)
                 echo "Versão suportada: Debian 9"
                 REPO_SYSTEM="debian"
                 REPO_URL="stretch"
+                REPO_TYPE="main"
                 MONGO_VERSION="5.0"
                 ;;
             *)
@@ -93,20 +101,20 @@ apt-get install gnupg curl build-essential git cmake -y
 # ---->>>> Instalação do MongoDB
 case $MONGO_VERSION in
     8.0)
-        wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION multiverse" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
+        wget -qO - https://www.mongodb.org/static/pgp/server-$MONGO_VERSION.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION $REPO_TYPE" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
         ;;
     7.0)
-        wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-7.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION multiverse" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
+        wget -qO - https://www.mongodb.org/static/pgp/server-$MONGO_VERSION.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION $REPO_TYPE" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
         ;;
     6.0)
-        wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-6.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        wget -qO - https://www.mongodb.org/static/pgp/server-$MONGO_VERSION.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION $REPO_TYPE" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
         ;;
     5.0)
-        wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-5.0.gpg
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list
+        wget -qO - https://www.mongodb.org/static/pgp/server-$MONGO_VERSION.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-$MONGO_VERSION.gpg ] https://repo.mongodb.org/apt/$REPO_SYSTEM $REPO_URL/mongodb-org/$MONGO_VERSION $REPO_TYPE" | tee /etc/apt/sources.list.d/mongodb-org-$MONGO_VERSION.list
         ;;
     *)
         echo "Versão do MongoDB não suportada."
@@ -116,8 +124,9 @@ esac
 apt update -y
 apt-get install -y mongodb-org
 systemctl daemon-reload
-systemctl start mongod
 systemctl enable mongod
+systemctl start mongod
+sleep 1
 mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCollection("users"); db.createCollection("connections");'
 
 # ---->>>> Instalar rust
@@ -167,7 +176,7 @@ Description=HttpProxy
 After=network.target
 
 [Service]
-LimitNOFILE=65536
+LimitNOFILE=infinity
 Type=simple
 ExecStart=/opt/rustymanager/proxy
 Restart=always
