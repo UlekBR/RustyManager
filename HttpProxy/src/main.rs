@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Some(connections) = connection {
         let proxy: HttpProxy = connections.proxy;
         if proxy.enabled {
-            let addr = format!("0.0.0.0:{}", proxy.port);
+            let addr = format!("[::]:{}", proxy.port);
             let listener = TcpListener::bind(&addr).await?;
             println!("Proxy server listening on {}", addr);
 
@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
 
 async fn handle_client(mut client_socket: TcpStream) -> Result<(), Box<dyn Error>> {
     let mut client_buffer = vec![0; BUFLEN];
