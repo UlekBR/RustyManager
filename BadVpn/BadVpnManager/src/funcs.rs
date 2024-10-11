@@ -27,7 +27,7 @@ After=network.target
 [Service]
 Restart=always
 Type=simple
-ExecStart=/opt/rustymanager/badvpn --loglevel warning --listen-addr 127.0.0.1:{}
+ExecStart=/opt/rustymanager/badvpn --loglevel warning --listen-addr [::]:{} --max-clients 1000 --max-connections-for-client 1000
 
 [Install]
 WantedBy=multi-user.target
