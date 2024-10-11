@@ -1,5 +1,6 @@
 mod funcs;
 mod text_funcs;
+mod text_funcs;
 
 use std::{env, io, thread};
 use std::process::Command;
