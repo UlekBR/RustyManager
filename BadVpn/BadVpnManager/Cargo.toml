@@ -5,7 +5,4 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.210", features = ["derive"] }
-
-[dependencies.mongodb]
-version = "3.0.1"
-features = ["sync"]
+mongodb = { version = "3.1.0", features = ["sync"] }
