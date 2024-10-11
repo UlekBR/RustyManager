@@ -140,17 +140,17 @@ git clone --recurse-submodules https://github.com/UlekBR/RustyManager.git
 
 # manager
 cd /root/RustyManager/Manager
-cargo build --release
+cargo build --release --jobs $(nproc)
 mv ./target/release/SshScript /opt/rustymanager/manager
 
 # httproxy
 cd /root/RustyManager/HttpProxy
-cargo build --release
+cargo build --release --jobs $(nproc)
 mv ./target/release/HttpProxy /opt/rustymanager/proxy
 
 # badvpn
 cd /root/RustyManager/BadVpn/BadVpnManager
-cargo build --release
+cargo build --release --jobs $(nproc)
 mv ./target/release/BadVpnManager /opt/rustymanager/badmanager
 
 cd ..
