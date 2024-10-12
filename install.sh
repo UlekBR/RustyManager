@@ -136,40 +136,16 @@ function ensureFieldsExist() {
         { proxy: { $exists: false } },
         {
             $set: {
-                proxy: { enabled: false, port: 8080 }
+                proxy: { enabled: false, port: 0 }
             }
-        }
-    );
-    db.connections.updateMany(
-        { "proxy.enabled": { $exists: false } },
-        {
-            $set: { "proxy.enabled": false }
-        }
-    );
-    db.connections.updateMany(
-        { "proxy.port": { $exists: false } },
-        {
-            $set: { "proxy.port": 8080 }
         }
     );
     db.connections.updateMany(
         { stunnel: { $exists: false } },
         {
             $set: {
-                stunnel: { enabled: false, port: 8443 }
+                stunnel: { enabled: false, port: 0 }
             }
-        }
-    );
-    db.connections.updateMany(
-        { "stunnel.enabled": { $exists: false } },
-        {
-            $set: { "stunnel.enabled": false }
-        }
-    );
-    db.connections.updateMany(
-        { "stunnel.port": { $exists: false } },
-        {
-            $set: { "stunnel.port": 8443 }
         }
     );
     db.connections.updateMany(
