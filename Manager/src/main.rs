@@ -680,13 +680,13 @@ fn connection_menu(database: mongodb::sync::Database) {
         println!("------------------------------------------------");
         let proxy = get_proxy_state(database.clone());
         if proxy.enabled {
-            println!("| 1 - HttpProxy: {} | Porta: {:<14} |", text_to_green("ativo"), proxy.port);
+            println!("| 1 - RustyProxy (ws/wss/socks): {:<21}  |", text_to_green("ativo"));
         } else {
             println!("| 1 - {:<40} |", "HttpProxy")
         }
         let stunnel = get_stunnel_state(database.clone());
         if stunnel.enabled {
-            println!("| 2 - Stunnel: {} | Porta: {:<14} |", text_to_green("ativo"), stunnel.port);
+            println!("| 2 - Stunnel: {:<40} |", text_to_green("ativo"));
         } else {
             println!("| 2 - {:<40} |", "Stunnel")
         }
