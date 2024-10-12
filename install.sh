@@ -184,7 +184,21 @@ SERVICE_FILE="/etc/systemd/system/proxy.service"
 echo "$SERVICE_FILE_CONTENT" | sudo tee "$SERVICE_FILE" > /dev/null
 sudo systemctl daemon-reload > /dev/null
 
-# ---->>>> Removendo o diretorio do RustyManager
+# ---->>>> Instalando STunnel
+apt install -y stunnel4
+
+# baixando certificado
+wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/kiritosshxd/SSHPLUS/master/Install/cert
+wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/kiritosshxd/SSHPLUS/master/Install/key
+
+# colocando o enable para os serviços do stunnel
+sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4
+
+# setar como desativado por padrão
+systemctl stop stunnel4
+systemctl disable stunnel4
+
+# ---->>>> Removendo o diretorio do Instalador RustyManager
 rm -rf /root/RustyManager/
 
 # ---->>>> Instalação finalizada :)
