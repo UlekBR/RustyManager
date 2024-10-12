@@ -9,7 +9,7 @@ fi
 
 echo "INICIANDO..."
 
-SCRIPT_VERSION="beta"
+SCRIPT_VERSION="main"
 
 # ---->>>> Verificação do sistema
 OS_NAME=$(lsb_release -is)
