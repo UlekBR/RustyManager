@@ -170,7 +170,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 # ---->>>> Instalar o RustyManager
 mkdir /opt/
 mkdir /opt/rustymanager
-git clone --branch SCRIPT_VERSION --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git
+git clone --branch $SCRIPT_VERSION --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git
 
 cd /root/RustyManager/
 cargo build --release --jobs $(nproc)
