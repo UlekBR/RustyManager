@@ -1,3 +1,4 @@
+use std::fs;
 use std::net::{TcpListener};
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
@@ -284,6 +285,7 @@ pub fn user_already_exists(user: &str) -> bool {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: HttpProxy,
+    pub(crate) stunnel: Stunnel,
     pub(crate) badvpn: BadVpn
 }
 
@@ -298,6 +300,13 @@ pub struct HttpProxy {
     pub(crate) port: u16,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Stunnel {
+    pub(crate) enabled: bool,
+    pub(crate) port: u16,
+}
+
+
 pub fn get_connections(database: Database) -> Connections {
     let collection: Collection<Connections> = database.collection("connections");
 
@@ -307,6 +316,10 @@ pub fn get_connections(database: Database) -> Connections {
     } else {
         Connections {
             proxy: HttpProxy {
+                enabled: false,
+                port: 0,
+            },
+            stunnel: Stunnel {
                 enabled: false,
                 port: 0,
             },
@@ -325,6 +338,20 @@ pub fn get_proxy_state(database: Database) -> HttpProxy {
         conn.proxy
     } else {
         HttpProxy {
+            enabled: false,
+            port: 0,
+        }
+    }
+}
+
+pub fn get_stunnel_state(database: Database) -> Stunnel {
+    let collection: Collection<Connections> = database.collection("connections");
+
+    let filter = doc! {};
+    if let Some(conn) = collection.find_one(filter).run().unwrap() {
+        conn.stunnel
+    } else {
+        Stunnel {
             enabled: false,
             port: 0,
         }
@@ -370,6 +397,10 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
                     enabled: true,
                     port: port as u16,
                 },
+                stunnel: Stunnel {
+                    enabled: false,
+                    port: 0,
+                },
                 badvpn: BadVpn {
                     ports: Vec::new()
                 }
@@ -387,6 +418,86 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
     }
 }
 
+pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<String, Box<dyn std::error::Error>> {
+    let collection: Collection<Connections> = database.collection("connections");
+
+    let filter = doc! {};
+    let connections = collection.find_one(filter.clone()).run().unwrap();
+
+    match connections {
+        Some(mut conn) => {
+            if conn.stunnel.enabled {
+                conn.stunnel.enabled = false;
+                conn.stunnel.port = 0;
+                let commands = [
+                    "systemctl disable stunnel4.service".to_string(),
+                    "systemctl stop stunnel4.service".to_string(),
+                ];
+                for command in commands {
+                    run_command(command);
+                }
+            } else {
+                conn.stunnel.enabled = true;
+                conn.stunnel.port = port as u16;
+
+                let stunnel_config = format!(r#"
+                    cert = /etc/stunnel/cert.pem
+                    key = /etc/stunnel/key.pem
+                    client = no
+                    [stunnel]
+                    connect = 127.0.0.1:22
+                    accept = {}
+                "#, port);
+                fs::write("/etc/stunnel/stunnel.conf", stunnel_config).unwrap();
+
+                let commands = [
+                    "systemctl enable stunnel4.service".to_string(),
+                    "systemctl start stunnel4.service".to_string(),
+                ];
+                for command in commands {
+                    run_command(command);
+                }
+            }
+
+            collection.replace_one(filter, conn.clone()).run().unwrap();
+            Ok(format!("Stunnel status updated: {:?}", conn.proxy))
+        },
+        None => {
+            let new_connection = Connections {
+                proxy: HttpProxy {
+                    enabled: false,
+                    port: 0,
+                },
+                stunnel: Stunnel {
+                    enabled: true,
+                    port: port as u16,
+                },
+                badvpn: BadVpn {
+                    ports: Vec::new()
+                }
+            };
+            collection.insert_one(new_connection).run().unwrap();
+            let stunnel_config = format!(r#"
+                    cert = /etc/stunnel/cert.pem
+                    key = /etc/stunnel/key.pem
+                    client = no
+                    [stunnel]
+                    connect = 127.0.0.1:22
+                    accept = {}
+                "#, port);
+            fs::write("/etc/stunnel/stunnel.conf", stunnel_config).unwrap();
+
+            let commands = [
+                "systemctl enable stunnel4.service".to_string(),
+                "systemctl start stunnel4.service".to_string(),
+            ];
+            for command in commands {
+                run_command(command);
+            }
+            Ok(format!("Stunnel enabled with port: {}", port))
+        }
+    }
+}
 
 pub fn is_port_avaliable(port: usize) -> Result<bool, bool> {
     match TcpListener::bind(format!("0.0.0.0:{}", port)) {

@@ -68,6 +68,7 @@ pub fn del_port(port: usize) -> Result<(), io::Error> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: HttpProxy,
+    pub(crate) stunnel: Stunnel,
     pub(crate) badvpn: BadVpn
 }
 
@@ -78,6 +79,12 @@ pub struct BadVpn {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HttpProxy {
+    pub(crate) enabled: bool,
+    pub(crate) port: u16,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Stunnel {
     pub(crate) enabled: bool,
     pub(crate) port: u16,
 }
@@ -97,6 +104,10 @@ pub fn add_port_in_db(database: Database, port: u16) -> Result<(), io::Error> {
         None => {
             let new_connection = Connections {
                 proxy: HttpProxy {
+                    enabled: false,
+                    port: 0,
+                },
+                stunnel: Stunnel {
                     enabled: false,
                     port: 0,
                 },

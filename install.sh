@@ -9,6 +9,8 @@ fi
 
 echo "INICIANDO..."
 
+SCRIPT_VERSION="beta"
+
 # ---->>>> Verificação do sistema
 OS_NAME=$(lsb_release -is)
 VERSION=$(lsb_release -rs)
@@ -127,7 +129,63 @@ systemctl daemon-reload
 systemctl enable mongod
 systemctl start mongod
 sleep 1
-mongosh --eval 'const db = connect("mongodb://localhost:27017/ssh"); db.createCollection("users"); db.createCollection("connections");'
+mongosh --eval '
+const db = connect("mongodb://localhost:27017/ssh");
+function ensureFieldsExist() {
+    db.connections.updateMany(
+        { proxy: { $exists: false } },
+        {
+            $set: {
+                proxy: { enabled: false, port: 8080 }
+            }
+        }
+    );
+    db.connections.updateMany(
+        { "proxy.enabled": { $exists: false } },
+        {
+            $set: { "proxy.enabled": false }
+        }
+    );
+    db.connections.updateMany(
+        { "proxy.port": { $exists: false } },
+        {
+            $set: { "proxy.port": 8080 }
+        }
+    );
+    db.connections.updateMany(
+        { stunnel: { $exists: false } },
+        {
+            $set: {
+                stunnel: { enabled: false, port: 8443 }
+            }
+        }
+    );
+    db.connections.updateMany(
+        { "stunnel.enabled": { $exists: false } },
+        {
+            $set: { "stunnel.enabled": false }
+        }
+    );
+    db.connections.updateMany(
+        { "stunnel.port": { $exists: false } },
+        {
+            $set: { "stunnel.port": 8443 }
+        }
+    );
+    db.connections.updateMany(
+        { badvpn: { $exists: false } },
+        {
+            $set: {
+                badvpn: { ports: [] }
+            }
+        }
+    );
+}
+if (!db.getCollectionNames().includes("connections")) {
+    db.createCollection("connections");
+}
+ensureFieldsExist();
+'
 
 # ---->>>> Instalar rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -136,7 +194,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 # ---->>>> Instalar o RustyManager
 mkdir /opt/
 mkdir /opt/rustymanager
-git clone --branch beta  --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git
+git clone --branch SCRIPT_VERSION --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git
 
 cd /root/RustyManager/
 cargo build --release --jobs $(nproc)
@@ -188,8 +246,8 @@ sudo systemctl daemon-reload > /dev/null
 apt install -y stunnel4
 
 # baixando certificado
-wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/kiritosshxd/SSHPLUS/master/Install/cert
-wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/kiritosshxd/SSHPLUS/master/Install/key
+wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem
+wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem
 
 # colocando o enable para os serviços do stunnel
 sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4

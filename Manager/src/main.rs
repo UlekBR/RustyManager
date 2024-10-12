@@ -7,7 +7,7 @@ use std::time::Duration;
 use chrono::DateTime;
 use mongodb::sync::{Client};
 use crate::text_funcs::{text_to_bold, text_to_green};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, get_stunnel_state, enable_or_disable_stunnel};
 
 fn main() {
 
@@ -194,7 +194,6 @@ fn main() {
                 println!("função invalida selecionada")
             }
         }
-
     }
 }
 
@@ -685,7 +684,13 @@ fn connection_menu(database: mongodb::sync::Database) {
         } else {
             println!("| 1 - {:<40} |", "HttpProxy")
         }
-        println!("| 2 - {:<40} |", "Badvpn");
+        let stunnel = get_stunnel_state(database.clone());
+        if stunnel.enabled {
+            println!("| 2 - Stunnel: {} | Porta: {:<14} |", text_to_green("ativo"), stunnel.port);
+        } else {
+            println!("| 2 - {:<40} |", "Stunnel")
+        }
+        println!("| 3 - {:<40} |", "Badvpn");
         println!("| 0 - {:<40} |", "Voltar ao menu");
         println!("------------------------------------------------");
         let mut option = String::new();
@@ -731,7 +736,6 @@ fn connection_menu(database: mongodb::sync::Database) {
                                     }
                                 }
                             }
-
                             match enable_or_disable_proxy(port.parse::<usize>().unwrap(), database.clone()) {
                                 Ok(_) => {
                                     Command::new("clear").status().unwrap();
@@ -746,13 +750,63 @@ fn connection_menu(database: mongodb::sync::Database) {
                                     io::stdin().read_line(&mut return_string).expect("");
                                 }
                             }
-
-
-
-
                         }
                     }
                     2 => {
+                        if stunnel.enabled {
+                            Command::new("clear").status().unwrap();
+                            println!("desativando, aguarde...");
+                            match enable_or_disable_stunnel(0, database.clone()) {
+                                Ok(_) => {
+                                    Command::new("clear").status().unwrap();
+                                    println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                                    let mut return_string = String::new();
+                                    io::stdin().read_line(&mut return_string).expect("");
+                                }
+                                Err(_) => {
+                                    Command::new("clear").status().unwrap();
+                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
+                                    let mut return_string = String::new();
+                                    io::stdin().read_line(&mut return_string).expect("");
+                                }
+                            }
+                        } else {
+                            let mut port = String::new();
+                            loop {
+                                println!("Digite uma porta: (ex: 443)");
+                                io::stdin().read_line(&mut port).unwrap();
+                                port = port.trim().to_string();
+                                match port.parse::<usize>() {
+                                    Ok(port) => {
+                                        match is_port_avaliable(port) {
+                                            Ok(true) => { break },
+                                            _ => { println!("A porta está em uso, digite outra:") }
+                                        }
+                                    }
+                                    Err(..) => {
+                                        println!("digite uma porta valida:");
+                                    }
+                                }
+                            }
+
+                            match enable_or_disable_stunnel(port.parse::<usize>().unwrap(), database.clone()) {
+                                Ok(_) => {
+                                    Command::new("clear").status().unwrap();
+                                    println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                                    let mut return_string = String::new();
+                                    io::stdin().read_line(&mut return_string).expect("");
+                                }
+                                Err(_) => {
+                                    Command::new("clear").status().unwrap();
+                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
+                                    let mut return_string = String::new();
+                                    io::stdin().read_line(&mut return_string).expect("");
+                                }
+                            }
+
+                        }
+                    }
+                    3 => {
                         badvpn_menu(database.clone())
                     }
                     0 => {
