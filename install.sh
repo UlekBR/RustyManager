@@ -138,29 +138,17 @@ mkdir /opt/
 mkdir /opt/rustymanager
 git clone --branch beta  --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git
 
-
-# manager
-cd /root/RustyManager/Manager
+cd /root/RustyManager/
 cargo build --release --jobs $(nproc)
 mv ./target/release/SshScript /opt/rustymanager/manager
-
-# httproxy
-cd /root/RustyManager/HttpProxy
-cargo build --release --jobs $(nproc)
 mv ./target/release/HttpProxy /opt/rustymanager/proxy
-
-# badvpn
-cd /root/RustyManager/BadVpn/BadVpnManager
-cargo build --release --jobs $(nproc)
 mv ./target/release/BadVpnManager /opt/rustymanager/badmanager
 
-cd ..
+
 mkdir /root/RustyManager/BadVpn/badvpn/badvpn-build
 cd  /root/RustyManager/BadVpn/badvpn/badvpn-build
-cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 &
-wait
-make &
-wait
+cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1
+make
 mv udpgw/badvpn-udpgw /opt/rustymanager/badvpn
 
 cd ../../../

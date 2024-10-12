@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "BadVpn/BadVpnManager",
+    "HttpProxy",
+    "Manager"
+]

@@ -5,7 +5,7 @@ use std::{env, io, thread};
 use std::process::Command;
 use std::time::Duration;
 use chrono::DateTime;
-use mongodb::{Database, sync::{Client}};
+use mongodb::sync::{Client};
 use crate::text_funcs::{text_to_bold, text_to_green};
 use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port};
 
@@ -217,11 +217,8 @@ fn main_menu(database: mongodb::sync::Database) {
         println!("{}", text_to_bold("================= RustyManager ================="));
         let os = run_command_and_get_output("lsb_release -is | tr -d '\"'");
         let version = run_command_and_get_output(" lsb_release -rs | tr -d '\"'");
-        let memory = run_command_and_get_output("free | awk '/Mem/{printf \"%.2f%%\", ($3/$2)*100}'");
-        let cpu = run_command_and_get_output("top -b -n 1 | grep 'Cpu(s)' | awk '{printf \"%.2f%%\\n\", 100 - $8}'");
         println!("------------------------------------------------");
         println!("| {} {:<16} | {} {:<13} |", text_to_bold("Os:"), os, text_to_bold("Versão:"), version);
-        println!("| {} {:<15} | {} {:<16} |", text_to_bold("Ram:"), memory,text_to_bold("Cpu:"),  cpu);
         println!("------------------------------------------------");
         let options = vec![
             "Gerenciar Usuarios",
