@@ -6,7 +6,7 @@ CURRENT_STEP=0
 
 show_progress() {
     PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
-    echo "nProgresso: [${PERCENT}%] - $1"
+    echo "Progresso: [${PERCENT}%] - $1"
 }
 
 error_exit() {
