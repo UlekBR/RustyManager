@@ -17,6 +17,7 @@ else
     fi
 
     # ---->>>> Verificação do sistema
+    clear
     OS_NAME=$(lsb_release -is)
     VERSION=$(lsb_release -rs)
 
@@ -24,11 +25,9 @@ else
         Ubuntu)
             case $VERSION in
                 24.*|22.*|20.*|18.*)
-                    clear
                     echo "Sistema suportado, vamos lá !"
                     ;;
                 *)
-                    clear
                     echo "Versão do Ubuntu não suportada. Use 18, 20, 22 ou 24."
                     return
                     ;;
@@ -37,18 +36,15 @@ else
         Debian)
             case $VERSION in
                 12*|11*|10*|9*)
-                    clear
                     echo "Sistema suportado, vamos lá !"
                     ;;
                 *)
-                    clear
                     echo "Versão do Debian não suportada. Use 9, 10, 11 ou 12."
                     return
                     ;;
             esac
             ;;
         *)
-            clear
             echo "Sistema não suportado. Use Ubuntu ou Debian."
             return
             ;;
@@ -89,7 +85,7 @@ else
     # ---->>>> Instalar o RustyManager
     mkdir /opt/
     mkdir /opt/rustymanager
-   ## git clone --branch "$SCRIPT_VERSION" --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git /root/RustyManager
+    git clone --branch "$SCRIPT_VERSION" --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git /root/RustyManager
 
     cd /root/RustyManager/
     cargo build --release --jobs $(nproc)
