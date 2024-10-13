@@ -170,6 +170,5 @@ else
     increment_step
 
     # ---->>>> Instalação finalizada :)
-    clear
-    echo "Instalação concluída com sucesso. Digite 'menu' para acessar o menu."
+    echo "Instalação concluída com sucesso. digite 'menu' para acessar o menu."
 fi
