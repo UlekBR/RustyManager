@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=12
+TOTAL_STEPS=13
 CURRENT_STEP=0
 
 show_progress() {
@@ -11,7 +11,7 @@ show_progress() {
 
 error_exit() {
     echo -e "\nErro: $1"
-    exit 1
+    return
 }
 
 increment_step() {
@@ -70,6 +70,12 @@ else
     show_progress "Atualizando o sistema..."
     apt upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
     apt-get install gnupg curl build-essential git cmake sqlite3 -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    increment_step
+
+    # ---->>>> Criando o diretorio do script
+    show_progress "Criando diretorio /opt/rustymanager..."
+    mkdir /opt/ > /dev/null 2>&1
+    mkdir /opt/rustymanager > /dev/null 2>&1
     increment_step
 
     # ---->>>> Criando as colunas no banco de dados
@@ -160,8 +166,8 @@ else
     wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
     wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
     sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4 || error_exit "Falha ao configurar STunnel"
-    systemctl stop stunnel4
-    systemctl disable stunnel4
+    systemctl stop stunnel4 > /dev/null 2>&1
+    systemctl disable stunnel4 > /dev/null 2>&1
     increment_step
 
     # ---->>>> Limpeza
