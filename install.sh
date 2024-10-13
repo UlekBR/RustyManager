@@ -172,6 +172,7 @@ else
 
     # ---->>>> Limpeza
     show_progress "Limpando diretórios temporários..."
+    cd /root/
     rm -rf /root/RustyManager/
     increment_step
 
