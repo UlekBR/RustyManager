@@ -212,8 +212,12 @@ fn main_menu(sqlite_conn: &Connection) {
         println!("{}", text_to_bold("================= RustyManager ================="));
         let os = run_command_and_get_output("lsb_release -is | tr -d '\"'");
         let version = run_command_and_get_output(" lsb_release -rs | tr -d '\"'");
+        let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
+        let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
+
         println!("------------------------------------------------");
-        println!("| {} {:<16} | {} {:<13} |", text_to_bold("Os:"), os, text_to_bold("Versão:"), version);
+        println!("| {} {:<16} | {} {:<4} |", text_to_bold("Os:"), os, text_to_bold("Usuarios Criado:"), created);
+        println!("| {} {:<12} | {} {:<4} |", text_to_bold("Versão:"), version, text_to_bold("Usuarios Online:"), online);
         println!("------------------------------------------------");
         let options = vec![
             "Gerenciar Usuarios",
