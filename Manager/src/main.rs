@@ -216,7 +216,7 @@ fn main_menu(sqlite_conn: &Connection) {
         let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
 
         println!("------------------------------------------------");
-        println!("| {} {:<16} | {} {:<4} |", text_to_bold("Os:"), os, text_to_bold("Usuarios Criado:"), created);
+        println!("| {} {:<16} | {} {:<3} |", text_to_bold("Os:"), os, text_to_bold("Usuarios Criados:"), created);
         println!("| {} {:<12} | {} {:<4} |", text_to_bold("Versão:"), version, text_to_bold("Usuarios Online:"), online);
         println!("------------------------------------------------");
         let options = vec![
