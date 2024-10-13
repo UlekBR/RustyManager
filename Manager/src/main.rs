@@ -5,20 +5,16 @@ use std::{env, io, thread};
 use std::process::Command;
 use std::time::Duration;
 use chrono::DateTime;
-use mongodb::sync::{Client};
+use rusqlite::Connection;
 use crate::text_funcs::{text_to_bold, text_to_green};
 use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, get_stunnel_state, enable_or_disable_stunnel};
 
 fn main() {
-
+    let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
     let args: Vec<String> = env::args().collect();
-    let uri = "mongodb://127.0.0.1:27017/";
-    let client = Client::with_uri_str(uri).expect("error on mongodb connect");
-    let database = client.database("ssh");
-
 
     if args.len() <= 1 {
-        main_menu(database.clone());
+        main_menu(&sqlite_conn);
     } else{
         match (&args[1]).as_str() {
             "--create-user" => {
@@ -61,7 +57,7 @@ fn main() {
                     }
                 }
 
-                let string = create_user(&args[2], &args[3], days.parse().unwrap(), limit.parse().unwrap(), false, database);
+                let string = create_user(&args[2], &args[3], days.parse().unwrap(), limit.parse().unwrap(), false, &sqlite_conn);
                 println!("{}", string)
 
             }
@@ -70,7 +66,7 @@ fn main() {
                     println!("user empty");
                     return;
                 }
-                let string = remove_user(&args[2], false, database);
+                let string = remove_user(&args[2], false, &sqlite_conn);
                 println!("{}", string);
             }
 
@@ -90,7 +86,7 @@ fn main() {
                     }
                 }
 
-                let string = generate_test(days.parse().unwrap(), database);
+                let string = generate_test(days.parse().unwrap(), &sqlite_conn);
                 println!("{}", string);
             }
             "--change-limit" => {
@@ -116,7 +112,7 @@ fn main() {
                     }
                 }
 
-                let string = change_limit(&args[2], limit.parse().unwrap(), false, database);
+                let string = change_limit(&args[2], limit.parse().unwrap(), false, &sqlite_conn);
                 println!("{}", string);
             }
 
@@ -143,7 +139,7 @@ fn main() {
                     }
                 }
 
-                let string = change_validity(&args[2], days.parse().unwrap(), false, database);
+                let string = change_validity(&args[2], days.parse().unwrap(), false, &sqlite_conn);
                 println!("{}", string);
             }
             "--change-pass" => {
@@ -160,17 +156,17 @@ fn main() {
                 }
 
 
-                let string = change_pass(&args[2], &args[3], false, database);
+                let string = change_pass(&args[2], &args[3], false, &sqlite_conn);
                 println!("{}", string);
             }
 
             "--users-report" => {
-                let string = users_report_json(database);
+                let string = users_report_json(&sqlite_conn);
                 println!("{}", string);
             }
 
             "--expired-report" => {
-                let string = expired_report_json(database);
+                let string = expired_report_json(&sqlite_conn);
                 println!("{}", string);
             }
 
@@ -210,7 +206,7 @@ fn user_exists() {
 }
 
 
-fn main_menu(database: mongodb::sync::Database) {
+fn main_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("================= RustyManager ================="));
@@ -240,10 +236,10 @@ fn main_menu(database: mongodb::sync::Database) {
                 match op {
                     0 => { break }
                     1 => {
-                        users_menu(database.clone());
+                        users_menu(&sqlite_conn);
                     }
                     2 => {
-                        connection_menu(database.clone());
+                        connection_menu(&sqlite_conn);
                     }
 
                     _ => {}
@@ -256,7 +252,7 @@ fn main_menu(database: mongodb::sync::Database) {
         }
     }
 }
-fn users_menu(database: mongodb::sync::Database) {
+fn users_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("================= RustyManager ================="));
@@ -355,7 +351,7 @@ fn users_menu(database: mongodb::sync::Database) {
                         }
                         Command::new("clear").status().unwrap();
 
-                        let create = create_user(&*user, &*pass, days.parse().unwrap(), limit.parse().unwrap(), true, database.clone());
+                        let create = create_user(&*user, &*pass, days.parse().unwrap(), limit.parse().unwrap(), true, &sqlite_conn);
                         match create.as_str() {
                             "created" => {
                                 let mut text = ">>> Usuario criado com sucesso".to_owned();
@@ -393,7 +389,7 @@ fn users_menu(database: mongodb::sync::Database) {
                             continue
                         }
 
-                        let remove = remove_user(&*user, true, database.clone());
+                        let remove = remove_user(&*user, true, &sqlite_conn);
                         match remove.as_str() {
                             "removed" => {
                                 println!(">>> Usuario removido com sucesso\n\n> Pressione qualquer tecla para voltar ao menu");
@@ -429,7 +425,7 @@ fn users_menu(database: mongodb::sync::Database) {
                             }
                         }
 
-                        let gen = generate_test(minutes.parse().unwrap(), database.clone());
+                        let gen = generate_test(minutes.parse().unwrap(), &sqlite_conn);
                         match gen.as_str() {
                             "error on insert user in db" => {
                                 Command::new("clear").status().unwrap();
@@ -489,7 +485,7 @@ fn users_menu(database: mongodb::sync::Database) {
                             }
                         }
 
-                        let change = change_limit(&*user, limit.parse().unwrap(), false, database.clone());
+                        let change = change_limit(&*user, limit.parse().unwrap(), false, &sqlite_conn);
                         match change.as_str() {
                             "error on update user in db" => {
                                 Command::new("clear").status().unwrap();
@@ -545,7 +541,7 @@ fn users_menu(database: mongodb::sync::Database) {
                             }
                         }
 
-                        let change = change_validity(&*user, days.parse().unwrap(), false, database.clone());
+                        let change = change_validity(&*user, days.parse().unwrap(), false, &sqlite_conn);
                         match change.as_str() {
                             "error on update user in db" => {
                                 Command::new("clear").status().unwrap();
@@ -586,7 +582,7 @@ fn users_menu(database: mongodb::sync::Database) {
                         pass = pass.trim().to_string();
 
 
-                        let change = change_pass(&*user, &*pass, false, database.clone());
+                        let change = change_pass(&*user, &*pass, false, &sqlite_conn);
                         match change.as_str() {
                             "error on update user in db" => {
                                 Command::new("clear").status().unwrap();
@@ -608,7 +604,7 @@ fn users_menu(database: mongodb::sync::Database) {
                     7 => {
                         Command::new("clear").status().unwrap();
                         println!("--> função selecionada: relatorio de usuarios");
-                        let users = users_report_vec(database.clone());
+                        let users = users_report_vec(&sqlite_conn);
                         for user in users {
                             println!("Usuario: {} | Senha: {} | Limite: {} | Expira em: {}", user.user, user.pass, user.limit, DateTime::parse_from_str(&user.expiry, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap().format("%Y-%m-%d"));
                         }
@@ -620,7 +616,7 @@ fn users_menu(database: mongodb::sync::Database) {
                     8 => {
                         Command::new("clear").status().unwrap();
                         println!("--> função selecionada: relatorio de usuarios expirados");
-                        let expired = expired_report_vec(database.clone());
+                        let expired = expired_report_vec(&sqlite_conn);
                         for user in expired {
                             println!("Usuario: {} | Senha: {} | Limite: {} | Expira em: {}", user.user, user.pass, user.limit, DateTime::parse_from_str(&user.expiry, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap().format("%Y-%m-%d"));
                         }
@@ -671,21 +667,24 @@ fn users_menu(database: mongodb::sync::Database) {
     }
 }
 
-fn connection_menu(database: mongodb::sync::Database) {
+fn connection_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("================= RustyManager ================="));
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Conexões"));
         println!("------------------------------------------------");
-        let proxy = get_proxy_state(database.clone());
-        if proxy.enabled {
+        let proxy = get_proxy_state(&sqlite_conn).unwrap();
+        let proxy_enable = proxy.enabled.expect("error on get proxy status");
+
+        if proxy_enable {
             println!("| 1 - RustyProxy (ws/wss/socks): {:<21}  |", text_to_green("ativo"));
         } else {
             println!("| 1 - {:<40} |", "HttpProxy")
         }
-        let stunnel = get_stunnel_state(database.clone());
-        if stunnel.enabled {
+        let stunnel = get_stunnel_state(&sqlite_conn).unwrap();
+        let stunnel_enable = stunnel.enabled.expect("error on get proxy status");
+        if stunnel_enable  {
             println!("| 2 - Stunnel: {:<40} |", text_to_green("ativo"));
         } else {
             println!("| 2 - {:<40} |", "Stunnel")
@@ -701,10 +700,10 @@ fn connection_menu(database: mongodb::sync::Database) {
             Ok(op) => {
                 match op {
                     1 => {
-                        if proxy.enabled {
+                        if proxy_enable {
                             Command::new("clear").status().unwrap();
                             println!("desativando, aguarde...");
-                            match enable_or_disable_proxy(0, database.clone()) {
+                            match enable_or_disable_proxy(0, &sqlite_conn) {
                                 Ok(_) => {
                                     Command::new("clear").status().unwrap();
                                     println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
@@ -736,7 +735,7 @@ fn connection_menu(database: mongodb::sync::Database) {
                                     }
                                 }
                             }
-                            match enable_or_disable_proxy(port.parse::<usize>().unwrap(), database.clone()) {
+                            match enable_or_disable_proxy(port.parse::<usize>().unwrap(), &sqlite_conn) {
                                 Ok(_) => {
                                     Command::new("clear").status().unwrap();
                                     println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
@@ -753,10 +752,10 @@ fn connection_menu(database: mongodb::sync::Database) {
                         }
                     }
                     2 => {
-                        if stunnel.enabled {
+                        if stunnel_enable {
                             Command::new("clear").status().unwrap();
                             println!("desativando, aguarde...");
-                            match enable_or_disable_stunnel(0, database.clone()) {
+                            match enable_or_disable_stunnel(0, &sqlite_conn) {
                                 Ok(_) => {
                                     Command::new("clear").status().unwrap();
                                     println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
@@ -789,7 +788,7 @@ fn connection_menu(database: mongodb::sync::Database) {
                                 }
                             }
 
-                            match enable_or_disable_stunnel(port.parse::<usize>().unwrap(), database.clone()) {
+                            match enable_or_disable_stunnel(port.parse::<usize>().unwrap(), &sqlite_conn) {
                                 Ok(_) => {
                                     Command::new("clear").status().unwrap();
                                     println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
@@ -807,7 +806,7 @@ fn connection_menu(database: mongodb::sync::Database) {
                         }
                     }
                     3 => {
-                        badvpn_menu(database.clone())
+                        badvpn_menu(&sqlite_conn)
                     }
                     0 => {
                         break
@@ -832,19 +831,20 @@ fn connection_menu(database: mongodb::sync::Database) {
     }
 }
 
-fn badvpn_menu(database: mongodb::sync::Database) {
+fn badvpn_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("================= RustyManager ================="));
         println!("------------------------------------------------");
         println!("|                {}                 |", text_to_bold("Portas BadVpn"));
         println!("------------------------------------------------");
-        let conn = get_connections(database.clone());
+        let conn = get_connections(&sqlite_conn).unwrap();
         println!("| {:<44} |", "Portas ativas:");
-        if conn.badvpn.ports.is_empty() {
+        let badvpn_ports = conn.badvpn.ports.expect("error on get badvpn ports");
+        if badvpn_ports.is_empty() {
             println!("|   - {:<40} |", "Nenhuma porta ativa")
         } else {
-            for port in conn.badvpn.ports {
+            for port in badvpn_ports {
                 println!("|   - {:<40} |", port)
             }
         }

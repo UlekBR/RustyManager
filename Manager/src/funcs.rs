@@ -3,29 +3,17 @@ use std::net::{TcpListener};
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 use std::process::{Command};
-use mongodb::sync::{Collection, Database};
-use mongodb::bson::{doc};
-
 use rand::Rng;
+use rusqlite::{Connection, OptionalExtension, params};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct User {
-    login_type: String,
-    pub(crate) user: String,
-    pub(crate) pass: String,
-    pub(crate) limit: String,
-    pub(crate)  expiry: String,
-}
 
-pub fn create_user(user: &str, pass: &str, days: usize, limit: usize, of_menu: bool, database: Database) -> String {
 
+pub fn create_user(user: &str, pass: &str, days: usize, limit: usize, of_menu: bool, conn: &Connection) -> String {
     if !of_menu {
         if user_already_exists(user) {
             return "user already exists".to_string()
         }
     }
-
-    let collection: Collection<User> = database.collection("users");
 
     let commands = [
         format!("/usr/sbin/useradd -M -N -s /bin/false {} -e $(date -d \"+{} days\" +%Y-%m-%d\n)", user, days),
@@ -36,30 +24,16 @@ pub fn create_user(user: &str, pass: &str, days: usize, limit: usize, of_menu: b
         run_command(command);
     }
 
-    let insert = collection.insert_one(
-        User{
-            login_type: "user".to_string(),
-            user: user.to_string(),
-            pass: pass.to_string(),
-            limit: limit.to_string(),
-            expiry: days_to_expire_date(days).to_string(),
-        }
-    );
+    conn.execute(
+        "INSERT INTO users (login_type, login_user, login_pass, login_limit, login_expiry) VALUES (?1, ?2, ?3, ?4, ?5)",
+        ("user", user, pass, limit, days_to_expire_date(days).to_string()),
+    ).expect("error on insert user in db");
 
-
-    match insert.run() {
-        Ok(_) => {
-            "created".to_string()
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on insert user in db".to_string()
-        }
-    }
+    "created".to_string()
 }
 
 
-pub fn remove_user(user: &str, of_menu: bool, database: Database) -> String {
+pub fn remove_user(user: &str, of_menu: bool, conn: &Connection) -> String {
     if !of_menu {
         if !user_already_exists(user) {
             return "user does not exist".to_string()
@@ -75,196 +49,146 @@ pub fn remove_user(user: &str, of_menu: bool, database: Database) -> String {
         run_command(command);
     }
 
-    let collection: Collection<User> = database.collection("users");
+    conn.execute(
+        "DELETE FROM users WHERE login_user = ?1",
+        [user],
+    ).expect("error on remove of db");
 
-    let filter =
-        doc! { "$and": [
-           doc! { "user": user },
-       ]
-    };
-    let result = collection.delete_one(filter).run();
-
-    match result {
-        Ok(_) => {
-            "removed".to_string()
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on remove user at db".to_string()
-        }
-    }
+    "removed".to_string()
 }
 
 
 
-pub fn generate_test(time: usize, database: Database) -> String {
-
+pub fn generate_test(time: usize, conn: &Connection) -> String {
     let mut rng = rand::thread_rng();
     let n = rng.gen_range(1000..=9999);
 
     let user = format!("test{}", n);
     let pass = format!("test{}", n);
 
-    let collection: Collection<User> = database.collection("users");
-
     let commands = [
         format!("/usr/sbin/useradd -M -N -s /bin/false {} -e $(date -d \"+{} minutes\" +%Y-%m-%dT%H:%M:%S)", user, time),
         format!("(echo {}; echo {}) | passwd {}", pass, pass, user),
-        format!("echo \"/root/SshScript --remove-user {}\" | at \"now + {} minute\" ", user, time),
+        format!("echo \"/opt/rustymanager/manager --remove-user {}\" | at \"now + {} minute\"", user, time),
     ];
 
     for command in commands {
         run_command(command);
     }
 
-    let insert = collection.insert_one(
-        User{
-            login_type: "test".to_string(),
-            user: user.to_string(),
-            pass: pass.to_string(),
-            limit: 1.to_string(),
-            expiry: minutes_to_expire_date(time).to_string(),
-        }
-    );
+    conn.execute(
+        "INSERT INTO users (login_type, login_user, login_pass, login_limit, login_expiry) VALUES (?1, ?2, ?3, ?4, ?5)",
+        ("test", &user, &pass, 1, minutes_to_expire_date(time).to_string()),
+    ).expect("error on insert user in db");
 
-
-    match insert.run() {
-        Ok(_) => {
-            format!("user: {} | pass: {} | limit: {} | minutes remaining: {}", user, pass, 1, time)
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on insert user in db".to_string()
-        }
-    }
+    format!("user: {} | pass: {} | limit: {} | minutes remaining: {}", user, pass, 1, time)
 }
 
-pub fn change_validity(user: &str, days: usize, of_menu: bool, database: Database) -> String {
+
+pub fn change_validity(user: &str, days: usize, of_menu: bool, conn: &Connection) -> String {
     if !of_menu {
         if !user_already_exists(user) {
-            return "user does not exist".to_string()
+            return "user does not exist".to_string();
         }
     }
-
-    let collection: Collection<User> = database.collection("users");
-
-    let commands = [
-        format!("sudo chage -E $(date -d \"+{} days\" +%Y-%m-%d) {}", days, user),
-    ];
-
-
-    for command in commands {
-        run_command(command);
-    }
+    run_command(format!("sudo chage -E $(date -d \"+{} days\" +%Y-%m-%d) {}", days, user));
     let new_expiry_date = days_to_expire_date(days);
-    let filter = doc! { "user": user };
-    let update = doc! { "$set": doc! {"expiry": new_expiry_date.clone()} };
-    match  collection.update_one(filter, update).run() {
-        Ok(_) => {
-            format!("changed | new expire date: {}", new_expiry_date)
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on update user in db".to_string()
-        }
-    }
+    conn.execute(
+        "UPDATE users SET login_expiry = ?1 WHERE login_user = ?2",
+        (&new_expiry_date, user),
+    ).expect("error on update user");
+
+    format!("changed | new expire date: {}", new_expiry_date)
 }
 
-pub fn change_limit(user: &str, limit: usize, of_menu: bool,  database: Database) -> String {
+pub fn change_limit(user: &str, limit: usize, of_menu: bool,  conn: &Connection) -> String {
     if !of_menu {
         if !user_already_exists(user) {
             return "user does not exist".to_string()
         }
     }
+    conn.execute(
+        "UPDATE users SET login_limit = ?1 WHERE login_user = ?2",
+        (limit, user),
+    ).expect("error on update user");
 
-    let collection: Collection<User> = database.collection("users");
-    let filter = doc! { "user": user };
-    let update = doc! { "$set": doc! {"limit": limit.to_string()} };
-    match  collection.update_one(filter, update).run() {
-        Ok(_) => {
-            format!("changed | new limit: {}", limit)
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on update user in db".to_string()
-        }
-    }
+    format!("changed | new limit: {}", limit)
 }
 
-pub fn change_pass(user: &str, pass: &str, of_menu: bool,  database: Database) -> String {
+pub fn change_pass(user: &str, pass: &str, of_menu: bool, conn: &Connection) -> String {
     if !of_menu {
         if !user_already_exists(user) {
             return "user does not exist".to_string()
         }
     }
-    let collection: Collection<User> = database.collection("users");
 
     let commands = [
         format!("(echo {}; echo {}) | passwd {}", pass, pass, user),
         format!("pkill -u {}", user)
     ];
 
-
     for command in commands {
         run_command(command);
     }
-
-    let filter = doc! { "user": user };
-    let update = doc! { "$set": doc! {"pass": pass} };
-    match  collection.update_one(filter, update).run() {
-        Ok(_) => {
-            format!("changed | new pass: {}", pass)
-        }
-        Err(err) => {
-            println!("{}", err);
-            "error on update user in db".to_string()
-        }
-    }
+    conn.execute(
+        "UPDATE users SET login_pass = ?1 WHERE login_user = ?2",
+        (pass, user),
+    ).expect("error on update user");
+    format!("changed | new pass: {}", pass)
 }
 
-pub fn users_report_json(database: Database) -> String {
-    serde_json::to_string_pretty(&users_report_vec(database)).expect("Serialization failed")
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct User {
+    login_type: String,
+    pub(crate) user: String,
+    pub(crate) pass: String,
+    pub(crate) limit: String,
+    pub(crate)  expiry: String,
 }
 
-pub fn users_report_vec(database: Database) -> Vec<User> {
-    let collection: Collection<User> = database.collection("users");
-    let users = collection.find(doc!{}).run().unwrap();
-    let vec_result_users = users.collect::<Vec<_>>();
-    vec_result_users.iter().map(|x| x.clone().unwrap()).collect::<Vec<User>>()
+pub fn users_report_json(conn: &Connection) -> String {
+    serde_json::to_string_pretty(&users_report_vec(conn)).expect("Serialization failed")
 }
 
+pub fn users_report_vec(conn: &Connection) -> Vec<User> {
+    let mut stmt = conn.prepare("SELECT login_type, login_user, login_pass, login_limit, login_expiry FROM users").unwrap();
+    let user_iter = stmt.query_map([], |row| {
+        Ok(User {
+            login_type: row.get(0)?,
+            user: row.get(1)?,
+            pass: row.get(2)?,
+            limit: row.get(3)?,
+            expiry: row.get(4)?,
+        })
+    }).unwrap();
 
-
-pub fn expired_report_json(database: Database) -> String {
-    let collection: Collection<User> = database.collection("users");
-    let users = collection.find(doc!{}).run().unwrap();
-    let vec_result_users = users.collect::<Vec<_>>();
-    let vec_users = vec_result_users.iter().map(|x| x.clone().unwrap()).collect::<Vec<User>>();
-    serde_json::to_string_pretty(&expired_users(vec_users)).expect("Serialization failed")
+    user_iter.filter_map(Result::ok).collect()
 }
 
-pub fn expired_report_vec(database: Database) -> Vec<User> {
-    let collection: Collection<User> = database.collection("users");
-    let users = collection.find(doc!{}).run().unwrap();
-    let vec_result_users = users.collect::<Vec<_>>();
-    let vec_users = vec_result_users.iter().map(|x| x.clone().unwrap()).collect::<Vec<User>>();
-    expired_users(vec_users)
+pub fn expired_report_json(conn: &Connection) -> String {
+    let expired_users = expired_report_vec(conn);
+    serde_json::to_string_pretty(&expired_users).expect("Serialization failed")
 }
 
-fn expired_users(users:  Vec<User>) -> Vec<User> {
+pub fn expired_report_vec(conn: &Connection) -> Vec<User> {
+    let all_users = users_report_vec(conn);
+    expired_users(all_users)
+}
+
+fn expired_users(users: Vec<User>) -> Vec<User> {
     let mut vec_expired_users: Vec<User> = Vec::new();
     for user in &users {
         if user.login_type == "user" {
             let now = Local::now();
-            let expiry =  DateTime::parse_from_str(&user.expiry, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap();
-            if now > expiry {
-                vec_expired_users.push(user.clone());
+            if let Ok(expiry) = DateTime::parse_from_str(&user.expiry, "%Y-%m-%d %H:%M:%S%.3f %z") {
+                if now > expiry {
+                    vec_expired_users.push(user.clone());
+                }
             }
         }
     }
     vec_expired_users
 }
-
 
 pub fn user_already_exists(user: &str) -> bool {
     let exec = Command::new("bash")
@@ -281,94 +205,104 @@ pub fn user_already_exists(user: &str) -> bool {
     false
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: HttpProxy,
     pub(crate) stunnel: Stunnel,
-    pub(crate) badvpn: BadVpn
+    pub(crate) badvpn: BadVpn,
 }
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BadVpn {
-    pub(crate) ports: Vec<u16>,
+    pub(crate) ports: Option<Vec<u16>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HttpProxy {
-    pub(crate) enabled: bool,
-    pub(crate) port: u16,
+    pub(crate) enabled: Option<bool>,
+    pub(crate) port: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stunnel {
-    pub(crate) enabled: bool,
-    pub(crate) port: u16,
+    pub(crate) enabled: Option<bool>,
+    pub(crate) port: Option<u16>,
 }
 
+pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::error::Error>> {
+    let mut stmt = conn.prepare("SELECT http_proxy_enabled, http_proxy_port, stunnel_enabled, stunnel_port, badvpn_ports FROM connections LIMIT 1")?;
 
-pub fn get_connections(database: Database) -> Connections {
-    let collection: Collection<Connections> = database.collection("connections");
+    let connection: Option<(Option<bool>, Option<u16>, Option<bool>, Option<u16>, Option<String>)> = stmt.query_row([], |row| {
+        Ok((
+            row.get(0).ok(),
+            row.get(1).ok(),
+            row.get(2).ok(),
+            row.get(3).ok(),
+            row.get(4).ok()
+        ))
+    }).optional().unwrap();
 
-    let filter = doc! {};
-    if let Some(conn) = collection.find_one(filter).run().unwrap() {
-        conn
-    } else {
-        Connections {
+    match connection {
+        Some((http_proxy_enabled, http_proxy_port, stunnel_enabled, stunnel_port, badvpn_ports)) => {
+            Ok(Connections {
+                proxy: HttpProxy {
+                    enabled: Option::from(http_proxy_enabled.unwrap_or(false)),
+                    port: Option::from(http_proxy_port.unwrap_or(0)),
+                },
+                stunnel: Stunnel {
+                    enabled: Option::from(stunnel_enabled.unwrap_or(false)),
+                    port: Option::from(stunnel_port.unwrap_or(0)),
+                },
+                badvpn: BadVpn {
+                    ports: Option::from(badvpn_ports.map(|ports| {
+                        ports.split('|').filter_map(|p| p.parse::<u16>().ok()).collect()
+                    }).unwrap_or_else(|| Vec::new())),
+                }
+            })
+        },
+        None => Ok(Connections {
             proxy: HttpProxy {
-                enabled: false,
-                port: 0,
+                enabled: Some(false),
+                port: Some(0),
             },
             stunnel: Stunnel {
-                enabled: false,
-                port: 0,
+                enabled: Some(false),
+                port: Some(0),
             },
             badvpn: BadVpn {
-                ports: Vec::new()
-            }
-        }
+                ports: Some(Vec::new()),
+            },
+        })
     }
 }
 
-pub fn get_proxy_state(database: Database) -> HttpProxy {
-    let collection: Collection<Connections> = database.collection("connections");
 
-    let filter = doc! {};
-    if let Some(conn) = collection.find_one(filter).run().unwrap() {
-        conn.proxy
-    } else {
-        HttpProxy {
-            enabled: false,
-            port: 0,
-        }
-    }
+pub fn get_proxy_state(conn: &Connection) -> Result<HttpProxy, Box<dyn std::error::Error>> {
+    let connections = get_connections(conn).unwrap();
+    Ok(connections.proxy)
 }
 
-pub fn get_stunnel_state(database: Database) -> Stunnel {
-    let collection: Collection<Connections> = database.collection("connections");
-
-    let filter = doc! {};
-    if let Some(conn) = collection.find_one(filter).run().unwrap() {
-        conn.stunnel
-    } else {
-        Stunnel {
-            enabled: false,
-            port: 0,
-        }
-    }
+pub fn get_stunnel_state(conn: &Connection) -> Result<Stunnel, Box<dyn std::error::Error>> {
+    let connections = get_connections(conn).unwrap();
+    Ok(connections.stunnel)
 }
 
-pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String, Box<dyn std::error::Error>> {
-    let collection: Collection<Connections> = database.collection("connections");
+pub fn enable_or_disable_proxy(port: usize, conn: &Connection) -> Result<String, Box<dyn std::error::Error>> {
+    let mut stmt = conn.prepare("SELECT http_proxy_enabled, http_proxy_port FROM connections LIMIT 1")?;
 
-    let filter = doc! {};
-    let connections = collection.find_one(filter.clone()).run().unwrap();
+    let connection: Option<(Option<bool>, Option<u16>)> = stmt.query_row([], |row| {
+        Ok((
+            row.get(0).ok(),
+            row.get(1).ok()
+        ))
+    }).optional().unwrap();
 
-    match connections {
-        Some(mut conn) => {
-            if conn.proxy.enabled {
-                conn.proxy.enabled = false;
-                conn.proxy.port = 0;
+
+    match connection {
+        Some((enabled, _port)) => {
+            if enabled.unwrap_or(false) {
+                // Desativar o proxy
                 let commands = [
                     "systemctl disable proxy.service".to_string(),
                     "systemctl stop proxy.service".to_string(),
@@ -376,9 +310,15 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
                 for command in commands {
                     run_command(command);
                 }
+
+                conn.execute(
+                    "UPDATE connections SET http_proxy_enabled = ?1, http_proxy_port = ?2",
+                    params![false, 0],
+                ).unwrap();
+
+                Ok("Proxy status updated: disabled".to_string())
             } else {
-                conn.proxy.enabled = true;
-                conn.proxy.port = port as u16;
+                // Ativar o proxy
                 let commands = [
                     "systemctl enable proxy.service".to_string(),
                     "systemctl start proxy.service".to_string(),
@@ -386,26 +326,17 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
                 for command in commands {
                     run_command(command);
                 }
-            }
 
-            collection.replace_one(filter, conn.clone()).run().unwrap();
-            Ok(format!("Proxy status updated: {:?}", conn.proxy))
+                conn.execute(
+                    "UPDATE connections SET http_proxy_enabled = ?1, http_proxy_port = ?2",
+                    params![true, port as u16],
+                ).unwrap();
+
+                Ok("Proxy status updated: enabled".to_string())
+            }
         },
         None => {
-            let new_connection = Connections {
-                proxy: HttpProxy {
-                    enabled: true,
-                    port: port as u16,
-                },
-                stunnel: Stunnel {
-                    enabled: false,
-                    port: 0,
-                },
-                badvpn: BadVpn {
-                    ports: Vec::new()
-                }
-            };
-            collection.insert_one(new_connection).run().unwrap();
+            // Ativar stunnel
             let commands = [
                 "systemctl enable proxy.service".to_string(),
                 "systemctl start proxy.service".to_string(),
@@ -413,22 +344,33 @@ pub fn enable_or_disable_proxy(port: usize, database: Database) -> Result<String
             for command in commands {
                 run_command(command);
             }
-            Ok(format!("Proxy enabled with port: {}", port))
+
+            conn.execute(
+                "INSERT INTO connections (http_proxy_enabled, http_proxy_port) VALUES (?1, ?2)",
+                params![true, port as u16],
+            ).unwrap();
+
+            Ok("Proxy status updated: enabled (new entry created)".to_string())
         }
     }
 }
 
-pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<String, Box<dyn std::error::Error>> {
-    let collection: Collection<Connections> = database.collection("connections");
 
-    let filter = doc! {};
-    let connections = collection.find_one(filter.clone()).run().unwrap();
+pub fn enable_or_disable_stunnel(port: usize, conn: &Connection) -> Result<String, Box<dyn std::error::Error>> {
+    let mut stmt = conn.prepare("SELECT stunnel_enabled, stunnel_port FROM connections LIMIT 1")?;
 
-    match connections {
-        Some(mut conn) => {
-            if conn.stunnel.enabled {
-                conn.stunnel.enabled = false;
-                conn.stunnel.port = 0;
+    let connection: Option<(Option<bool>, Option<u16>)> = stmt.query_row([], |row| {
+        Ok((
+            row.get(0).ok(),
+            row.get(1).ok()
+        ))
+    }).optional().unwrap();
+
+
+    match connection {
+        Some((enabled, _port)) => {
+            if enabled.unwrap_or(false) {
+                // Desativar stunnel
                 let commands = [
                     "systemctl disable stunnel4.service".to_string(),
                     "systemctl stop stunnel4.service".to_string(),
@@ -436,10 +378,15 @@ pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<Stri
                 for command in commands {
                     run_command(command);
                 }
-            } else {
-                conn.stunnel.enabled = true;
-                conn.stunnel.port = port as u16;
 
+                conn.execute(
+                    "UPDATE connections SET stunnel_enabled = ?1, stunnel_port = ?2",
+                    params![false, 0],
+                ).unwrap();
+
+                Ok("Stunnel status updated: disabled".to_string())
+            } else {
+                // Ativar stunnel
                 let stunnel_config = format!(r#"
                     cert = /etc/stunnel/cert.pem
                     key = /etc/stunnel/key.pem
@@ -448,7 +395,7 @@ pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<Stri
                     connect = 127.0.0.1:22
                     accept = {}
                 "#, port);
-                fs::write("/etc/stunnel/stunnel.conf", stunnel_config).unwrap();
+                fs::write("/etc/stunnel/stunnel.conf", stunnel_config)?;
 
                 let commands = [
                     "systemctl enable stunnel4.service".to_string(),
@@ -457,26 +404,18 @@ pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<Stri
                 for command in commands {
                     run_command(command);
                 }
-            }
 
-            collection.replace_one(filter, conn.clone()).run().unwrap();
-            Ok(format!("Stunnel status updated: {:?}", conn.proxy))
+                conn.execute(
+                    "UPDATE connections SET stunnel_enabled = ?1, stunnel_port = ?2",
+                    params![true, port as u16],
+                ).unwrap();
+
+
+                Ok("Stunnel status updated: enabled".to_string())
+            }
         },
         None => {
-            let new_connection = Connections {
-                proxy: HttpProxy {
-                    enabled: false,
-                    port: 0,
-                },
-                stunnel: Stunnel {
-                    enabled: true,
-                    port: port as u16,
-                },
-                badvpn: BadVpn {
-                    ports: Vec::new()
-                }
-            };
-            collection.insert_one(new_connection).run().unwrap();
+            // Ativar stunnel
             let stunnel_config = format!(r#"
                     cert = /etc/stunnel/cert.pem
                     key = /etc/stunnel/key.pem
@@ -485,7 +424,7 @@ pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<Stri
                     connect = 127.0.0.1:22
                     accept = {}
                 "#, port);
-            fs::write("/etc/stunnel/stunnel.conf", stunnel_config).unwrap();
+            fs::write("/etc/stunnel/stunnel.conf", stunnel_config)?;
 
             let commands = [
                 "systemctl enable stunnel4.service".to_string(),
@@ -494,10 +433,17 @@ pub fn enable_or_disable_stunnel(port: usize, database: Database) -> Result<Stri
             for command in commands {
                 run_command(command);
             }
-            Ok(format!("Stunnel enabled with port: {}", port))
+
+            conn.execute(
+                "INSERT INTO connections (stunnel_enabled, stunnel_port) VALUES (?1, ?2)",
+                params![true, port as u16],
+            ).unwrap();
+
+            Ok("Stunnel status updated: enabled (new entry created)".to_string())
         }
     }
 }
+
 
 pub fn is_port_avaliable(port: usize) -> Result<bool, bool> {
     match TcpListener::bind(format!("0.0.0.0:{}", port)) {

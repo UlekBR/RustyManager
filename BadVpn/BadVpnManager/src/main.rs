@@ -1,25 +1,23 @@
 use std::env;
-
-use mongodb::sync::Client;
-use crate::funcs::{add_port, add_port_in_db, del_port, del_port_in_db, is_port_avaliable};
+use rusqlite::{Connection, Result};
+use crate::funcs::{add_port, add_port_in_db, del_port, del_port_in_db, is_port_available};
 
 mod funcs;
 
-fn main() {
+fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    let uri = "mongodb://127.0.0.1:27017/";
-    let client = Client::with_uri_str(uri).expect("error on mongodb connect");
-    let database = client.database("ssh");
+
+    let conn = Connection::open("/opt/rustymanager/db").unwrap();
 
     if args.len() >= 1 {
-        match (&args[1]).as_str() {
+        match args[1].as_str() {
             "--enable-port" => {
-                let port =  (&args[2]).as_str();
+                let port = args[2].as_str();
                 match port.parse::<usize>() {
                     Ok(port) => {
-                        if is_port_avaliable(port).expect("error on check port use") {
+                        if is_port_available(port).expect("error on check port use") {
                             add_port(port).expect("error on enable port");
-                            add_port_in_db(database, port as u16).expect("error on insert port in db");
+                            add_port_in_db(&conn, port as u16).expect("error on insert port in db");
                         }
                     }
                     Err(..) => {
@@ -28,12 +26,12 @@ fn main() {
                 }
             }
             "--disable-port" => {
-                let port =  (&args[2]).as_str();
+                let port = args[2].as_str();
                 match port.parse::<usize>() {
                     Ok(port) => {
-                        if !is_port_avaliable(port).expect("error on check port use")  {
+                        if !is_port_available(port).expect("error on check port use") {
                             del_port(port).expect("error on disable port");
-                            del_port_in_db(database, port as u16).expect("error on remove port in db");
+                            del_port_in_db(&conn, port as u16).expect("error on remove port in db");
                         }
                     }
                     Err(..) => {
@@ -44,4 +42,6 @@ fn main() {
             _ => {}
         }
     }
+
+    Ok(())
 }

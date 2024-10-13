@@ -1,19 +1,13 @@
 use std::error::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use mongodb::bson::{doc};
-use mongodb::{Client, Collection};
+use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
-    pub(crate) proxy: HttpProxy,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HttpProxy {
-    pub(crate) enabled: bool,
-    pub(crate) port: u16,
+    pub(crate) http_proxy_enabled: bool,
+    pub(crate) http_proxy_port: u16,
 }
 
 const BUFLEN: usize = 4096 * 16;
@@ -23,18 +17,13 @@ const RESPONSE: &[u8] = b"HTTP/1.1 200 @RustyManager\r\n\r\n";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let uri = "mongodb://127.0.0.1:27017/";
-    let client = Client::with_uri_str(uri).await?;
-    let database = client.database("ssh");
-    let collection: Collection<Connections> = database.collection("connections");
+    let conn = Connection::open("/opt/rustymanager/db")?;
 
-    let filter = doc! {};
-    let connection = collection.find_one(filter).await?;
+    let connection = get_connection_settings(&conn)?;
 
     if let Some(connections) = connection {
-        let proxy: HttpProxy = connections.proxy;
-        if proxy.enabled {
-            let addr = format!("[::]:{}", proxy.port);
+        if connections.http_proxy_enabled {
+            let addr = format!("[::]:{}", connections.http_proxy_port);
             let listener = TcpListener::bind(&addr).await?;
             println!("Proxy server listening on {}", addr);
 
@@ -54,6 +43,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn get_connection_settings(conn: &Connection) -> Result<Option<Connections>> {
+    let mut stmt = conn.prepare("SELECT http_proxy_enabled, http_proxy_port FROM connections LIMIT 1")?;
+    let connection_iter = stmt.query_map(params![], |row| {
+        Ok(Connections {
+            http_proxy_enabled: row.get(0)?,
+            http_proxy_port: row.get(1)?,
+        })
+    })?;
+
+    for connection in connection_iter {
+        return Ok(Some(connection?));
+    }
+    Ok(None)
+}
 
 async fn handle_client(mut client_socket: TcpStream) -> Result<(), Box<dyn Error>> {
     let mut client_buffer = vec![0; BUFLEN];
@@ -70,7 +73,6 @@ async fn handle_client(mut client_socket: TcpStream) -> Result<(), Box<dyn Error
     connect_target(DEFAULT_HOST, &mut client_socket).await?;
     Ok(())
 }
-
 
 async fn connect_target(host: &str, client_socket: &mut TcpStream) -> Result<(), Box<dyn Error>> {
     let mut retries = 3;
