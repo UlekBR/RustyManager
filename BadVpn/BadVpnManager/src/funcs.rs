@@ -19,6 +19,15 @@ Description=BadVpn{}
 After=network.target
 
 [Service]
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitMEMLOCK=infinity
+LimitSTACK=infinity
+LimitCORE=infinity
+LimitAS=infinity
+LimitRSS=infinity
+LimitCPU=infinity
+LimitFSIZE=infinity
 Restart=always
 Type=simple
 ExecStart=/opt/rustymanager/badvpn --listen-addr 127.0.0.1:{} --max-clients 1000 --max-connections-for-client 1000 --client-socket-sndbuf 0 --udp-mtu 9000

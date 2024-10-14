@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=13
+TOTAL_STEPS=14
 CURRENT_STEP=0
 
 show_progress() {
@@ -138,25 +138,29 @@ else
     # ---->>>> Criar o serviço do proxy
     show_progress "Criando o serviço do proxy..."
     SERVICE_FILE="/etc/systemd/system/proxy.service"
+    TEMP_FILE=$(mktemp)
+
     echo "[Unit]
     Description=HttpProxy
     After=network.target
 
     [Service]
     LimitNOFILE=infinity
+    LimitNPROC=infinity
+    LimitMEMLOCK=infinity
+    LimitSTACK=infinity
+    LimitCORE=infinity
+    LimitAS=infinity
+    LimitRSS=infinity
+    LimitCPU=infinity
+    LimitFSIZE=infinity
     Type=simple
     ExecStart=/opt/rustymanager/proxy
     Restart=always
-    StandardOutput=syslog
-    StandardError=syslog
-    SyslogIdentifier=proxy
-    User=root
-    Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    Environment=HOME=/root
-    WorkingDirectory=/opt/rustymanager
 
     [Install]
-    WantedBy=multi-user.target" > "$SERVICE_FILE" || error_exit "Falha ao criar o serviço do proxy"
+    WantedBy=multi-user.target" > "$TEMP_FILE" || error_exit "Falha ao criar o serviço temporário do proxy"
+    mv "$TEMP_FILE" "$SERVICE_FILE" || error_exit "Falha ao substituir o serviço do proxy"
     systemctl daemon-reload > /dev/null 2>&1 || error_exit "Falha ao recarregar serviços"
     increment_step
 
@@ -168,6 +172,13 @@ else
     sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4 || error_exit "Falha ao configurar STunnel"
     systemctl stop stunnel4 > /dev/null 2>&1
     systemctl disable stunnel4 > /dev/null 2>&1
+    increment_step
+
+    # ---->>>> Substituindo arquivo sshdconfig
+    show_progress "Otimizando ssh..."
+    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/config > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
+    systemctl restart ssh > /dev/null 2>&1
+    systemctl restart sshd > /dev/null 2>&1
     increment_step
 
     # ---->>>> Limpeza
