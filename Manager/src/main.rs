@@ -222,6 +222,7 @@ fn user_exists() {
 
 fn main_menu(sqlite_conn: &Connection) {
     loop {
+        
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("Calculando uso de cpu e ram..."));
         let os = run_command_and_get_output("lsb_release -is | tr -d '\"'");
@@ -285,7 +286,7 @@ fn main_menu(sqlite_conn: &Connection) {
 fn users_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Usuarios"));
         println!("------------------------------------------------");
@@ -685,7 +686,7 @@ fn users_menu(sqlite_conn: &Connection) {
 fn connection_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Conexões"));
         println!("------------------------------------------------");
@@ -736,7 +737,7 @@ fn connection_menu(sqlite_conn: &Connection) {
 fn utils_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|                  {}                 |", text_to_bold("Ferramentas"));
         println!("------------------------------------------------");
@@ -773,13 +774,16 @@ fn utils_menu(sqlite_conn: &Connection) {
                         let upload_mbps = upload_mb / upload_seconds;
 
                         Command::new("clear").status().unwrap();
-                        println!("{}", text_to_bold("================= RustyManager ================="));
+
                         println!("------------------------------------------------");
                         println!("|              {}             |", text_to_bold("Teste de Velocidade"));
                         println!("------------------------------------------------");
-                        println!("| Velocidade de download: {:<20} |", format!("{:.2}mbps", download_mbps));
-                        println!("| Velocidade de upload:   {:<20} |", format!("{:.2}mbps", upload_mbps));
-                        println!("| Tempo de resposta:      {:<18}   |", format!("{:.2}ms", speedtest.ping.latency));
+                        println!("| Rede: {:<38} |", speedtest.interface.name);
+                        println!("| Ip: {:<40} |", speedtest.interface.internal_ip);
+                        println!("| Download: {:<34} |", format!("{:.2}mbps", download_mbps));
+                        println!("| Download: {:<34} |", format!("{:.2}mbps", download_mbps));
+                        println!("| Upload:   {:<34} |", format!("{:.2}mbps", upload_mbps));
+                        println!("| Ping:     {:<32}   |", format!("{:.2}ms", speedtest.ping.latency));
                         println!("------------------------------------------------");
 
                         println!("\n> pressione qualquer tecla para voltar ao menu");
@@ -787,6 +791,11 @@ fn utils_menu(sqlite_conn: &Connection) {
                         io::stdin().read_line(&mut return_string).expect("");
                     }
                     3 => {
+                        Command::new("clear").status().unwrap();
+                        println!("{}", text_to_bold("> aviso: para sair do monitor, pressione F10"));
+                        println!("> pressione qualquer tecla para continuar");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
                         Command::new("htop").status().unwrap();
                     }
                     4 => {
@@ -813,7 +822,7 @@ fn utils_menu(sqlite_conn: &Connection) {
 fn proxy_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|                {}             |", text_to_bold("Portas RustyProxy"));
         println!("------------------------------------------------");
@@ -923,7 +932,7 @@ fn proxy_menu(sqlite_conn: &Connection) {
 fn stunnel_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|                {}                |", text_to_bold("Portas Stunnel"));
         println!("------------------------------------------------");
@@ -1058,7 +1067,7 @@ fn stunnel_menu(sqlite_conn: &Connection) {
 fn badvpn_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|                {}                 |", text_to_bold("Portas BadVpn"));
         println!("------------------------------------------------");
@@ -1165,7 +1174,7 @@ fn badvpn_menu(sqlite_conn: &Connection) {
 fn checkuser_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|               {}               |", text_to_bold("Portas Checkuser"));
         println!("------------------------------------------------");
@@ -1272,7 +1281,7 @@ fn checkuser_menu(sqlite_conn: &Connection) {
 fn journald_menu() {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        
         println!("------------------------------------------------");
         println!("|               {}              |", text_to_bold("Gerenciar Journald"));
         println!("------------------------------------------------");

@@ -61,7 +61,7 @@ async fn main() {
     let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(handle_request)) });
     let addr = ([0, 0, 0, 0, 0, 0, 0, 0], args.port).into();
     let server = Server::bind(&addr).serve(make_svc);
-    println!("Listening on http://[::]:3232");
+    println!("Listening on http://[::]:{}", args.port);
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);
     }
