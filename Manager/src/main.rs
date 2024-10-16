@@ -69,7 +69,6 @@ fn main() {
                 let string = remove_user(&args[2], false, &sqlite_conn);
                 println!("{}", string);
             }
-
             "--generate-test" => {
                 if 2 >= args.len() {
                     println!("minutes empty");
@@ -115,7 +114,6 @@ fn main() {
                 let string = change_limit(&args[2], limit.parse().unwrap(), false, &sqlite_conn);
                 println!("{}", string);
             }
-
             "--change-validity" => {
                 match args.len() {
                     _i if 2 >= _i  => {
@@ -159,7 +157,6 @@ fn main() {
                 let string = change_pass(&args[2], &args[3], false, &sqlite_conn);
                 println!("{}", string);
             }
-
             "--userdata" => {
                 match args.len() {
                     _i if 2 >= _i  => {

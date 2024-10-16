@@ -50,6 +50,12 @@ Gera um relatório de todos os usuários SSH cadastrados.
 - **`--expired-report`**  
 Gera um relatório de usuários cujo acesso expirou.
 
+- **`--online-report`**  
+  Gera um relatório de usuários online.
+
+- **`--userdata <user>`**  
+  Retorna os dados de um usuario.
+
 ## Grupo de atualizações
 https://t.me/rustymanager
 
