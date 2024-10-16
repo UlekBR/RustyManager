@@ -25,7 +25,7 @@ else
     show_progress "Atualizando repositorios..."
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
-    SCRIPT_VERSION="main"
+    SCRIPT_VERSION="beta"
     increment_step
 
     # ---->>>> Verificação do sistema
