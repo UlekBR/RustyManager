@@ -148,13 +148,13 @@ else
 
     # ---->>>> Instalar speedtest
     show_progress "Instalando Speedtest..."
-    curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash || error_exit "Falha ao baixar e instalar o script do speedtest"
-    apt-get install -y speedtest || error_exit "Falha ao instalar o speedtest"
+    curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
+    apt-get install -y speedtest > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
     increment_step
     
     # ---->>>> Instalar Htop
     show_progress "Instalando monitor de recursos..."
-    apt-get install -y htop || error_exit "Falha ao instalar o speedtest"
+    apt-get install -y htop > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
     increment_step
 
 
