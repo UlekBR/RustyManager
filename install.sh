@@ -69,7 +69,7 @@ else
     # ---->>>> Instalação de pacotes requisitos e atualização do sistema
     show_progress "Atualizando o sistema..."
     apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-    apt-get install gnupg curl build-essential git cmake sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    apt-get install gnupg curl build-essential git cmake sysstat sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
     increment_step
 
     # ---->>>> Criando o diretorio do script
