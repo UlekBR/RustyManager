@@ -1,8 +1,0 @@
-[package]
-name = "HttpProxy"
-edition = "2021"
-
-[dependencies]
-tokio = {version = "1.40.0", features = ["full"]}
-serde = { version = "1.0.210", features = ["derive"] }
-rusqlite = { version = "0.32.1", features = ["bundled"] }

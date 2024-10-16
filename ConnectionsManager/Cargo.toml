@@ -1,8 +1,8 @@
 [package]
-name = "BadVpnManager"
+name = "ConnectionsManager"
 edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.210", features = ["derive"] }
-rusqlite = { version = "0.32.1", features = ["bundled"] }
+rusqlite = { version = "0.32.1"}
 serde_json = "1.0.128"

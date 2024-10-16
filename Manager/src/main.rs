@@ -6,8 +6,8 @@ use std::process::Command;
 use std::time::Duration;
 use chrono::DateTime;
 use rusqlite::Connection;
-use crate::text_funcs::{text_to_bold, text_to_green};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, enable_or_disable_proxy, expired_report_json, expired_report_vec, generate_test, get_proxy_state, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, get_stunnel_state, enable_or_disable_stunnel};
+use crate::text_funcs::{text_to_bold};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald};
 
 fn main() {
     let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
@@ -160,6 +160,19 @@ fn main() {
                 println!("{}", string);
             }
 
+            "--userdata" => {
+                match args.len() {
+                    _i if 2 >= _i  => {
+                        println!("user empty");
+                        return;
+                    }
+                    _ => {}
+                }
+
+                let string = userdata(&args[2], &sqlite_conn);
+                println!("{}", string);
+            }
+
             "--users-report" => {
                 let string = users_report_json(&sqlite_conn);
                 println!("{}", string);
@@ -170,9 +183,12 @@ fn main() {
                 println!("{}", string);
             }
 
+            "--online-report" => {
+                let string = online_report_json(&sqlite_conn);
+                println!("{}", string);
+            }
 
             "--help" => {
-
                 let mut text = " -- help data".to_owned();
                 text = text + "\n   --create-user <user> <pass> <days> <limit>";
                 text = text + "\n   --remove-user <user>";
@@ -182,6 +198,7 @@ fn main() {
                 text = text + "\n   --change-pass <user> <pass>";
                 text = text + "\n   --users-report";
                 text = text + "\n   --expired-report";
+                text = text + "\n   --online-report";
 
                 println!("{}", text)
             }
@@ -209,19 +226,30 @@ fn user_exists() {
 fn main_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("{}", text_to_bold("Calculando uso de cpu e ram..."));
         let os = run_command_and_get_output("lsb_release -is | tr -d '\"'");
         let version = run_command_and_get_output(" lsb_release -rs | tr -d '\"'");
         let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
         let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
+        let cpu_usage = run_command_and_get_output("mpstat 1 1 | awk '/Average/ {print 100 - $NF\"%\"}'");
+        let cpu_cores = run_command_and_get_output("nproc");
+        let ram_total = run_command_and_get_output("free -m | awk 'NR==2{print $2 \" MB\"}'");
+        let ram_usage = run_command_and_get_output("free -m | awk 'NR==2{printf \"%.2f%%\\n\", $3*100/$2}'");
 
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
         println!("------------------------------------------------");
         println!("| {} {:<16} | {} {:<3} |", text_to_bold("Os:"), os, text_to_bold("Usuarios Criados:"), created);
         println!("| {} {:<12} | {} {:<4} |", text_to_bold("Versão:"), version, text_to_bold("Usuarios Online:"), online);
+        println!("-----------------------|------------------------");
+        println!("| {:<28} | {:<29} |", text_to_bold("CPU:"), text_to_bold("Ram:"));
+        println!("|  - {} {:<8} |  - {} {:<11} |", text_to_bold("Nucleos:"), cpu_cores, text_to_bold("Total:"), ram_total);
+        println!("|  - {} {:<9} |  - {} {:<10} |", text_to_bold("Em uso:"), cpu_usage, text_to_bold("Em uso:"), ram_usage);
         println!("------------------------------------------------");
         let options = vec![
             "Gerenciar Usuarios",
             "Gerenciar Conexões",
+            "Ferramentas",
         ];
 
         for (i, option) in options.iter().enumerate() {
@@ -233,8 +261,6 @@ fn main_menu(sqlite_conn: &Connection) {
 
         let mut option = String::new();
         io::stdin().read_line(&mut option).unwrap();
-
-
         match option.trim().parse() {
             Ok(op) => {
                 match op {
@@ -244,6 +270,9 @@ fn main_menu(sqlite_conn: &Connection) {
                     }
                     2 => {
                         connection_menu(&sqlite_conn);
+                    }
+                    3 =>{
+                        utils_menu(&sqlite_conn)
                     }
 
                     _ => {}
@@ -260,10 +289,6 @@ fn users_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("================= RustyManager ================="));
-        let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
-        let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
-        println!("------------------------------------------------");
-        println!("| {} {:<12} | {} {:<12} |", text_to_bold("Online:"), online, text_to_bold("Criados:"), created);
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Usuarios"));
         println!("------------------------------------------------");
@@ -633,30 +658,19 @@ fn users_menu(sqlite_conn: &Connection) {
                             Command::new("clear").status().unwrap();
                             println!("Monitorando usuários conectados via SSH");
                             println!("------------------------------------------");
-                            println!("Usuário           | Conexões");
+                            println!("Usuário           | Conexões/Limite");
                             println!("--------------------------");
 
-                            let output = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@'");
-
-                            let connections = String::from_utf8_lossy(output.as_ref());
-                            let mut user_connections: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
-                            for line in connections.lines() {
-                                let user = line.split_whitespace().next().unwrap_or("");
-                                if user != "root" {
-                                    *user_connections.entry(user).or_insert(0) += 1;
-                                }
+                            let users = online_report(&sqlite_conn);
+                            let mut total_connections: usize = 0;
+                            for user in users {
+                                total_connections = total_connections + user.connected.parse::<usize>().unwrap();
+                                println!("{:<18} | {}/{}", user.user, user.connected, user.limit);
                             }
-
-                            for (user, count) in user_connections.iter() {
-                                println!("{:<18} | {}", user, count);
-                            }
-
-                            let total_connections: usize = user_connections.values().sum();
                             if total_connections != 0 {
                                 println!("--------------------------");
                             }
                             println!("Total de conexões: {}", total_connections);
-
                             thread::sleep(Duration::from_secs(1));
                         }
                     }
@@ -678,21 +692,8 @@ fn connection_menu(sqlite_conn: &Connection) {
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Conexões"));
         println!("------------------------------------------------");
-        let proxy = get_proxy_state(&sqlite_conn).unwrap();
-        let proxy_enable = proxy.enabled.expect("error on get proxy status");
-
-        if proxy_enable {
-            println!("| 1 - RustyProxy (ws/wss/socks): {:<21}  |", text_to_green("ativo"));
-        } else {
-            println!("| 1 - {:<40} |", "HttpProxy")
-        }
-        let stunnel = get_stunnel_state(&sqlite_conn).unwrap();
-        let stunnel_enable = stunnel.enabled.expect("error on get proxy status");
-        if stunnel_enable  {
-            println!("| 2 - Stunnel: {:<40} |", text_to_green("ativo"));
-        } else {
-            println!("| 2 - {:<40} |", "Stunnel")
-        }
+        println!("| 1 - {:<40} |", "RustyProxy (ws/wss/socks)");
+        println!("| 2 - {:<40} |", "Stunnel");
         println!("| 3 - {:<40} |", "Badvpn");
         println!("| 0 - {:<40} |", "Voltar ao menu");
         println!("------------------------------------------------");
@@ -704,110 +705,10 @@ fn connection_menu(sqlite_conn: &Connection) {
             Ok(op) => {
                 match op {
                     1 => {
-                        if proxy_enable {
-                            Command::new("clear").status().unwrap();
-                            println!("desativando, aguarde...");
-                            match enable_or_disable_proxy(0, &sqlite_conn) {
-                                Ok(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                                Err(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                            }
-                        } else {
-                            let mut port = String::new();
-                            loop {
-                                println!("Digite uma porta: (ex: 80)");
-                                io::stdin().read_line(&mut port).unwrap();
-                                port = port.trim().to_string();
-                                match port.parse::<usize>() {
-                                    Ok(port) => {
-                                        match is_port_avaliable(port) {
-                                            Ok(true) => { break },
-                                            _ => { println!("A porta está em uso, digite outra:") }
-                                        }
-                                    }
-                                    Err(..) => {
-                                        println!("digite uma porta valida");
-                                    }
-                                }
-                            }
-                            match enable_or_disable_proxy(port.parse::<usize>().unwrap(), &sqlite_conn) {
-                                Ok(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                                Err(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                            }
-                        }
+                        proxy_menu(&sqlite_conn)
                     }
                     2 => {
-                        if stunnel_enable {
-                            Command::new("clear").status().unwrap();
-                            println!("desativando, aguarde...");
-                            match enable_or_disable_stunnel(0, &sqlite_conn) {
-                                Ok(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Desativado com sucesso, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                                Err(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                            }
-                        } else {
-                            let mut port = String::new();
-                            loop {
-                                println!("Digite uma porta: (ex: 443)");
-                                io::stdin().read_line(&mut port).unwrap();
-                                port = port.trim().to_string();
-                                match port.parse::<usize>() {
-                                    Ok(port) => {
-                                        match is_port_avaliable(port) {
-                                            Ok(true) => { break },
-                                            _ => { println!("A porta está em uso, digite outra:") }
-                                        }
-                                    }
-                                    Err(..) => {
-                                        println!("digite uma porta valida:");
-                                    }
-                                }
-                            }
-
-                            match enable_or_disable_stunnel(port.parse::<usize>().unwrap(), &sqlite_conn) {
-                                Ok(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Ativado com sucesso, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                                Err(_) => {
-                                    Command::new("clear").status().unwrap();
-                                    println!("\n> Algo deu errado, pressione qualquer tecla para voltar ao menu");
-                                    let mut return_string = String::new();
-                                    io::stdin().read_line(&mut return_string).expect("");
-                                }
-                            }
-
-                        }
+                        stunnel_menu(&sqlite_conn)
                     }
                     3 => {
                         badvpn_menu(&sqlite_conn)
@@ -835,6 +736,328 @@ fn connection_menu(sqlite_conn: &Connection) {
     }
 }
 
+fn utils_menu(sqlite_conn: &Connection) {
+    loop {
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("------------------------------------------------");
+        println!("|                  {}                 |", text_to_bold("Ferramentas"));
+        println!("------------------------------------------------");
+        println!("| {:<45}|", "1 - Checkuser Multi-Apps");
+        println!("| {:<45}|", "2 - Teste de Velocidade");
+        println!("| {:<45}|", "3 - Monitorar recursos");
+        println!("| {:<45}|", "4 - Gerenciar Journald");
+        println!("| {:<45}|", "0 - Voltar ao menu");
+        println!("------------------------------------------------");
+        println!();
+        let mut option = String::new();
+        println!(" --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        checkuser_menu(&sqlite_conn);
+                    }
+                    2 => {
+                        Command::new("clear").status().unwrap();
+                        println!("teste em execução, essa ação pode demorar...");
+                        let speedtest = speedtest_data();
+                        let download_bits = speedtest.download.bytes as f64 * 8.0;
+                        let upload_bits = speedtest.upload.bytes as f64 * 8.0;
+
+                        let download_mb = download_bits / 1_000_000.0;
+                        let upload_mb = upload_bits / 1_000_000.0;
+
+                        let download_seconds = speedtest.download.elapsed as f64 / 1000.0;
+                        let upload_seconds = speedtest.upload.elapsed as f64 / 1000.0;
+
+                        let download_mbps = download_mb / download_seconds;
+                        let upload_mbps = upload_mb / upload_seconds;
+
+                        Command::new("clear").status().unwrap();
+                        println!("{}", text_to_bold("================= RustyManager ================="));
+                        println!("------------------------------------------------");
+                        println!("|              {}             |", text_to_bold("Teste de Velocidade"));
+                        println!("------------------------------------------------");
+                        println!("| Velocidade de download: {:<20} |", format!("{:.2}mbps", download_mbps));
+                        println!("| Velocidade de upload:   {:<20} |", format!("{:.2}mbps", upload_mbps));
+                        println!("| Tempo de resposta:      {:<18}   |", format!("{:.2}ms", speedtest.ping.latency));
+                        println!("------------------------------------------------");
+
+                        println!("\n> pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+                    3 => {
+                        Command::new("htop").status().unwrap();
+                    }
+                    4 => {
+                        journald_menu();
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
+
+fn proxy_menu(sqlite_conn: &Connection) {
+    loop {
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("------------------------------------------------");
+        println!("|                {}             |", text_to_bold("Portas RustyProxy"));
+        println!("------------------------------------------------");
+        let conn = get_connections(&sqlite_conn).unwrap();
+        let proxy_ports = conn.proxy.ports.unwrap_or_default();
+        if proxy_ports.is_empty() {
+            println!("| Portas(s): {:<34}|", "nenhuma");
+        } else {
+            let active_ports = proxy_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            println!("| Portas(s): {:<34}|", active_ports);
+        }
+
+        println!("------------------------------------------------");
+        println!("| {:<45}|", "1 - Abrir Porta");
+        println!("| {:<45}|", "2 - Fechar Porta");
+        println!("| {:<45}|", "0 - Voltar ao menu");
+        println!("------------------------------------------------");
+        println!();
+        let mut option = String::new();
+        println!(" --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if !is_port_avaliable(port).unwrap() {
+                                        println!("essa porta já está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+                        println!("Digite o status de conexão (não digite nada para o padrão): ");
+                        let mut status = String::new();
+                        io::stdin().read_line(&mut status).unwrap();
+                        status = status.trim().to_string();
+
+                        enable_proxy_port(port, status);
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+                    2 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if is_port_avaliable(port).unwrap() {
+                                        println!("essa porta não está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+
+                        disable_proxy_port(port);
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
+fn stunnel_menu(sqlite_conn: &Connection) {
+    loop {
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("------------------------------------------------");
+        println!("|                {}                |", text_to_bold("Portas Stunnel"));
+        println!("------------------------------------------------");
+        let conn = get_connections(&sqlite_conn).unwrap();
+        let stunnel_ports = conn.stunnel.ports.unwrap_or_default();
+        if stunnel_ports.is_empty() {
+            println!("| Portas(s): {:<34}|", "nenhuma");
+        } else {
+            let active_ports = stunnel_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            println!("| Portas(s): {:<34}|", active_ports);
+        }
+
+        println!("| 1 - {:<40} |", "Abrir Porta");
+        println!("| 2 - {:<40} |", "Abrir Porta Ipv6 (usuarios avançados)");
+        println!("| 3 - {:<40} |", "Fechar Porta");
+        println!("| 0 - {:<40} |", "Voltar ao menu");
+        println!("------------------------------------------------");
+        let mut option = String::new();
+        println!("\n --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if !is_port_avaliable(port).unwrap() {
+                                        println!("essa porta já está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+                        enable_stunnel_port(port, false);
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+                    2 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if !is_port_avaliable(port).unwrap() {
+                                        println!("essa porta já está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+                        enable_stunnel_port(port, true);
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+
+
+                    3 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if is_port_avaliable(port).unwrap() {
+                                        println!("essa porta não está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+
+                        disable_stunnel_port(port);
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
 fn badvpn_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
@@ -843,15 +1066,14 @@ fn badvpn_menu(sqlite_conn: &Connection) {
         println!("|                {}                 |", text_to_bold("Portas BadVpn"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
-        println!("| {:<44} |", "Portas ativas:");
-        let badvpn_ports = conn.badvpn.ports.expect("error on get badvpn ports");
+        let badvpn_ports = conn.badvpn.ports.unwrap_or_default();
         if badvpn_ports.is_empty() {
-            println!("|   - {:<40} |", "Nenhuma porta ativa")
+            println!("| Portas(s): {:<34}|", "nenhuma");
         } else {
-            for port in badvpn_ports {
-                println!("|   - {:<40} |", port)
-            }
+            let active_ports = badvpn_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            println!("| Portas(s): {:<34}|", active_ports);
         }
+
         println!("| 1 - {:<40} |", "Abrir Porta");
         println!("| 2 - {:<40} |", "Fechar Porta");
         println!("| 0 - {:<40} |", "Voltar ao menu");
@@ -866,6 +1088,9 @@ fn badvpn_menu(sqlite_conn: &Connection) {
                         let mut port = String::new();
                         loop {
                             println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
                             io::stdin().read_line(&mut port).unwrap();
                             port = port.trim().to_string();
                             match port.parse::<usize>() {
@@ -895,6 +1120,9 @@ fn badvpn_menu(sqlite_conn: &Connection) {
                         let mut port = String::new();
                         loop {
                             println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
                             io::stdin().read_line(&mut port).unwrap();
                             port = port.trim().to_string();
                             match port.parse::<usize>() {
@@ -919,6 +1147,166 @@ fn badvpn_menu(sqlite_conn: &Connection) {
                         let mut return_string = String::new();
                         io::stdin().read_line(&mut return_string).expect("");
 
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
+fn checkuser_menu(sqlite_conn: &Connection) {
+    loop {
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("------------------------------------------------");
+        println!("|               {}               |", text_to_bold("Portas Checkuser"));
+        println!("------------------------------------------------");
+        let conn = get_connections(&sqlite_conn).unwrap();
+        let checkuser_ports = conn.checkuser.ports.unwrap_or_default();
+        if checkuser_ports.is_empty() {
+            println!("| Portas(s): {:<34}|", "nenhuma");
+        } else {
+            let active_ports = checkuser_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            println!("| Portas(s): {:<34}|", active_ports);
+        }
+        println!("| 1 - {:<40} |", "Abrir Porta");
+        println!("| 2 - {:<40} |", "Fechar Porta");
+        println!("| 0 - {:<40} |", "Voltar ao menu");
+        println!("------------------------------------------------");
+        let mut option = String::new();
+        println!("\n --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if !is_port_avaliable(port).unwrap() {
+                                        println!("essa porta já está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+
+                        enable_checkuser_port(port);
+
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
+                    }
+                    2 => {
+                        let mut port = String::new();
+                        loop {
+                            println!("Digite a porta: ");
+                            if !port.is_empty() {
+                                port = String::new();
+                            };
+                            io::stdin().read_line(&mut port).unwrap();
+                            port = port.trim().to_string();
+                            match port.parse::<usize>() {
+                                Ok(port) => {
+                                    if is_port_avaliable(port).unwrap() {
+                                        println!("essa porta não está em uso, digite outra:")
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Err(..) => {
+                                    println!("digite uma porta valida");
+                                }
+                            }
+
+                        }
+
+                        disable_checkuser_port(port);
+
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
+
+fn journald_menu() {
+    loop {
+        Command::new("clear").status().unwrap();
+        println!("{}", text_to_bold("================= RustyManager ================="));
+        println!("------------------------------------------------");
+        println!("|               {}              |", text_to_bold("Gerenciar Journald"));
+        println!("------------------------------------------------");
+        let status = journald_status();
+        if status {
+            println!("| Status: {:<37}|", "ativado");
+            println!("------------------------------------------------");
+            println!("| 1 - {:<40} |", "Desativar");
+        } else {
+            println!("| Status: {:<37}|", "desativado");
+            println!("------------------------------------------------");
+            println!("| 1 - {:<40} |", "Ativar");
+        }
+        println!("| 0 - {:<40} |", "Voltar ao menu");
+        println!("------------------------------------------------");
+        let mut option = String::new();
+        println!("\n --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        if status {
+                            disable_journald()
+                        } else {
+                            enable_journald()
+                        }
+                        Command::new("clear").status().unwrap();
+                        println!("\n> Sucesso, pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
                     }
                     0 => {
                         break

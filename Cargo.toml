@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "BadVpn/BadVpnManager",
-    "HttpProxy",
-    "Manager"
+    "RustyProxy",
+    "Manager",
+    "ConnectionsManager",
+    "CheckUser"
 ]

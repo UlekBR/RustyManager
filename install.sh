@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=14
+TOTAL_STEPS=15
 CURRENT_STEP=0
 
 show_progress() {
@@ -24,14 +24,14 @@ else
     clear
     show_progress "Atualizando repositorios..."
     export DEBIAN_FRONTEND=noninteractive
-    apt update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
+    apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
     SCRIPT_VERSION="main"
     increment_step
 
     # ---->>>> Verificação do sistema
     show_progress "Verificando o sistema..."
     if ! command -v lsb_release &> /dev/null; then
-        apt install lsb-release -y > /dev/null 2>&1 || error_exit "Falha ao instalar lsb-release"
+        apt-get install lsb-release -y > /dev/null 2>&1 || error_exit "Falha ao instalar lsb-release"
     fi
     increment_step
 
@@ -68,8 +68,8 @@ else
 
     # ---->>>> Instalação de pacotes requisitos e atualização do sistema
     show_progress "Atualizando o sistema..."
-    apt upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-    apt-get install gnupg curl build-essential git cmake sqlite3 -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
+    apt-get install gnupg curl build-essential git cmake sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
     increment_step
 
     # ---->>>> Criando o diretorio do script
@@ -91,11 +91,10 @@ else
     );
     CREATE TABLE IF NOT EXISTS connections (
         id INTEGER PRIMARY KEY,
-        http_proxy_enabled BOOLEAN,
-        http_proxy_port INTEGER,
-        stunnel_enabled BOOLEAN,
-        stunnel_port INTEGER,
-        badvpn_ports TEXT
+        proxy_ports TEXT,
+        stunnel_ports TEXT,
+        badvpn_ports TEXT,
+        checkuser_ports TEXT
     );
     " || error_exit "Falha ao configurar o banco de dados"
     increment_step
@@ -116,8 +115,9 @@ else
     cd /root/RustyManager/
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
     mv ./target/release/SshScript /opt/rustymanager/manager
-    mv ./target/release/HttpProxy /opt/rustymanager/proxy
-    mv ./target/release/BadVpnManager /opt/rustymanager/badmanager
+    mv ./target/release/CheckUser /opt/rustymanager/checkuser
+    mv ./target/release/RustyProxy /opt/rustymanager/proxy
+    mv ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
     increment_step
 
     # ---->>>> Compilar BadVPN
@@ -131,48 +131,32 @@ else
 
     # ---->>>> Configuração de permissões
     show_progress "Configurando permissões..."
-    chmod +x /opt/rustymanager/{manager,proxy,badmanager,badvpn}
+    chmod +x /opt/rustymanager/{manager,proxy,connectionsmanager,checkuser,badvpn}
     ln -sf /opt/rustymanager/manager /usr/local/bin/menu
-    increment_step
-
-    # ---->>>> Criar o serviço do proxy
-    show_progress "Criando o serviço do proxy..."
-    SERVICE_FILE="/etc/systemd/system/proxy.service"
-    TEMP_FILE=$(mktemp)
-
-    echo "[Unit]
-    Description=HttpProxy
-    After=network.target
-
-    [Service]
-    LimitNOFILE=infinity
-    LimitNPROC=infinity
-    LimitMEMLOCK=infinity
-    LimitSTACK=infinity
-    LimitCORE=infinity
-    LimitAS=infinity
-    LimitRSS=infinity
-    LimitCPU=infinity
-    LimitFSIZE=infinity
-    Type=simple
-    ExecStart=/opt/rustymanager/proxy
-    Restart=always
-
-    [Install]
-    WantedBy=multi-user.target" > "$TEMP_FILE" || error_exit "Falha ao criar o serviço temporário do proxy"
-    mv "$TEMP_FILE" "$SERVICE_FILE" || error_exit "Falha ao substituir o serviço do proxy"
-    systemctl daemon-reload > /dev/null 2>&1 || error_exit "Falha ao recarregar serviços"
     increment_step
 
     # ---->>>> Instalando STunnel
     show_progress "Instalando STunnel..."
-    apt install -y stunnel4 > /dev/null 2>&1 || error_exit "Falha ao instalar STunnel"
+    apt-get install -y stunnel4 > /dev/null 2>&1 || error_exit "Falha ao instalar STunnel"
     wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
     wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
     sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4 || error_exit "Falha ao configurar STunnel"
     systemctl stop stunnel4 > /dev/null 2>&1
     systemctl disable stunnel4 > /dev/null 2>&1
     increment_step
+
+
+    # ---->>>> Instalar speedtest
+    show_progress "Instalando Speedtest..."
+    curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash || error_exit "Falha ao baixar e instalar o script do speedtest"
+    apt-get install -y speedtest || error_exit "Falha ao instalar o speedtest"
+    increment_step
+    
+    # ---->>>> Instalar Htop
+    show_progress "Instalando monitor de recursos..."
+    apt-get install -y htop || error_exit "Falha ao instalar o speedtest"
+    increment_step
+
 
     # ---->>>> Substituindo arquivo sshdconfig
     show_progress "Otimizando ssh..."
