@@ -161,7 +161,7 @@ else
 
     # ---->>>> Substituindo arquivo sshdconfig
     show_progress "Otimizando ssh..."
-    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/conf > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
+    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/config > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
     systemctl restart ssh > /dev/null 2>&1
     systemctl restart sshd > /dev/null 2>&1
     increment_step
