@@ -2,12 +2,13 @@ mod funcs;
 mod text_funcs;
 
 use std::{env, io, thread};
+use std::io::BufRead;
 use std::process::Command;
 use std::time::Duration;
 use chrono::DateTime;
 use rusqlite::Connection;
 use crate::text_funcs::{text_to_bold};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services};
 
 fn main() {
     let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
@@ -297,9 +298,10 @@ fn users_menu(sqlite_conn: &Connection) {
             "Alterar limite",
             "Alterar validade",
             "Alterar senha",
-            "Relatorio de usuario",
-            "Relatorio de usuarios expirados",
-            "Relatorio de usuarios conectados"
+            "Relatorio de usuarios",
+            "Relatorio de expirados",
+            "Relatorio de conectados",
+            "Remover expirados"
         ];
 
         for (i, option) in options.iter().enumerate() {
@@ -652,6 +654,11 @@ fn users_menu(sqlite_conn: &Connection) {
                         io::stdin().read_line(&mut return_string).expect("");
                     }
                     9 => {
+                        let stdin = io::stdin();
+                        let handle = thread::spawn(move || {
+                            let _ = stdin.lock().lines().next();
+                        });
+
                         loop {
                             Command::new("clear").status().unwrap();
                             println!("Monitorando usuários conectados via SSH");
@@ -662,15 +669,37 @@ fn users_menu(sqlite_conn: &Connection) {
                             let users = online_report(&sqlite_conn);
                             let mut total_connections: usize = 0;
                             for user in users {
-                                total_connections = total_connections + user.connected.parse::<usize>().unwrap();
+                                total_connections += user.connected.parse::<usize>().unwrap();
                                 println!("{:<18} | {}/{}", user.user, user.connected, user.limit);
                             }
                             if total_connections != 0 {
                                 println!("--------------------------");
                             }
                             println!("Total de conexões: {}", total_connections);
+                            println!("\n> Pressione qualquer tecla para voltar ao menu");
+
+                            if handle.is_finished() {
+                                break;
+                            }
                             thread::sleep(Duration::from_secs(1));
                         }
+                    }
+                    10 => {
+                        Command::new("clear").status().unwrap();
+                        println!("--> função selecionada: remover usuarios expirados");
+                        let expired = expired_report_vec(&sqlite_conn);
+                        if expired.len() > 0 {
+                            for user in expired {
+                                remove_user(user.user.as_str(), true, &sqlite_conn);
+                                println!("usuario: {} removido", user.user);
+                            }
+                        } else {
+                            println!("nenhum usuario expirado encontrado")
+                        }
+                        println!("\n> Pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
                     }
                     _ => {}
                 }
@@ -690,9 +719,10 @@ fn connection_menu(sqlite_conn: &Connection) {
         println!("------------------------------------------------");
         println!("|              {}              |", text_to_bold("Gerenciar Conexões"));
         println!("------------------------------------------------");
-        println!("| 1 - {:<40} |", "RustyProxy (ws/wss/socks)");
-        println!("| 2 - {:<40} |", "Stunnel");
-        println!("| 3 - {:<40} |", "Badvpn");
+        println!("| 1 - {:<40} |", "Portas Ativas");
+        println!("| 2 - {:<40} |", "RustyProxy (ws/wss/socks)");
+        println!("| 3 - {:<40} |", "Stunnel");
+        println!("| 4 - {:<40} |", "Badvpn");
         println!("| 0 - {:<40} |", "Voltar ao menu");
         println!("------------------------------------------------");
         let mut option = String::new();
@@ -703,12 +733,15 @@ fn connection_menu(sqlite_conn: &Connection) {
             Ok(op) => {
                 match op {
                     1 => {
-                        proxy_menu(&sqlite_conn)
+                        services_menu()
                     }
                     2 => {
-                        stunnel_menu(&sqlite_conn)
+                        proxy_menu(&sqlite_conn)
                     }
                     3 => {
+                        stunnel_menu(&sqlite_conn)
+                    }
+                    4 => {
                         badvpn_menu(&sqlite_conn)
                     }
                     0 => {
@@ -818,13 +851,12 @@ fn utils_menu(sqlite_conn: &Connection) {
         }
     }
 }
-
 fn proxy_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
         
         println!("------------------------------------------------");
-        println!("|                {}             |", text_to_bold("Portas RustyProxy"));
+        println!("|                  {}                 |", text_to_bold("RUSTY PROXY"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
         let proxy_ports = conn.proxy.ports.unwrap_or_default();
@@ -934,7 +966,7 @@ fn stunnel_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
         
         println!("------------------------------------------------");
-        println!("|                {}                |", text_to_bold("Portas Stunnel"));
+        println!("|                    {}                   |", text_to_bold("STUNNEL"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
         let stunnel_ports = conn.stunnel.ports.unwrap_or_default();
@@ -1069,7 +1101,7 @@ fn badvpn_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
         
         println!("------------------------------------------------");
-        println!("|                {}                 |", text_to_bold("Portas BadVpn"));
+        println!("|                    {}                    |", text_to_bold("BADVPN"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
         let badvpn_ports = conn.badvpn.ports.unwrap_or_default();
@@ -1176,7 +1208,7 @@ fn checkuser_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
         
         println!("------------------------------------------------");
-        println!("|               {}               |", text_to_bold("Portas Checkuser"));
+        println!("|                   {}                  |", text_to_bold("CHECKUSER"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
         let checkuser_ports = conn.checkuser.ports.unwrap_or_default();
@@ -1277,7 +1309,6 @@ fn checkuser_menu(sqlite_conn: &Connection) {
         }
     }
 }
-
 fn journald_menu() {
     loop {
         Command::new("clear").status().unwrap();
@@ -1330,4 +1361,20 @@ fn journald_menu() {
             }
         }
     }
+}
+fn services_menu() {
+    Command::new("clear").status().unwrap();
+
+    println!("------------------------------------------------");
+    println!("|                 {}                |", text_to_bold("Portas Ativas"));
+    println!("------------------------------------------------");
+    let services = get_services();
+    for service in services {
+        println!("| - {:<43}|", format!("{}: {}", service.name, service.ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ")));
+    }
+    println!("------------------------------------------------");
+    println!();
+    println!("> Pressione qualquer tecla para voltar ao menu");
+    let mut return_string = String::new();
+    io::stdin().read_line(&mut return_string).expect("");
 }

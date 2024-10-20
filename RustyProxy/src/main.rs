@@ -1,8 +1,9 @@
 use std::error::Error;
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use clap::{arg, Parser};
-
+use tokio::io;
 
 #[derive(Parser)]
 #[command(name = "RustyProxy")]
@@ -14,47 +15,43 @@ struct Args {
     status: String,
 }
 
-
-const BUFLEN: usize = 4096 * 16;
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-
     let addr = format!("[::]:{}", args.port);
-    let ws_response = format!("HTTP/1.1 101 {}\r\n\r\n", args.status);
-    let response = format!("HTTP/1.1 200 {}\r\n\r\n", args.status);
     let listener = TcpListener::bind(&addr).await?;
     println!("Proxy server listening on {}", addr);
 
+    let ws_response = Arc::new(format!("HTTP/1.1 101 {}\r\n\r\n", args.status));
+    let response = Arc::new(format!("HTTP/1.1 200 {}\r\n\r\n", args.status));
+
     loop {
         let (client_socket, _) = listener.accept().await?;
-        let ws_response = ws_response.clone();
-        let response = response.clone();
+        let ws_response_clone = Arc::clone(&ws_response);
+        let response_clone = Arc::clone(&response);
 
         tokio::spawn(async move {
-            if let Err(e) = handle_client(client_socket, &ws_response, &response).await {
+            if let Err(e) = handle_client(client_socket, ws_response_clone, response_clone).await {
                 eprintln!("Connection error: {}", e);
             }
         });
     }
-
 }
-
 
 async fn handle_client(
     mut client_socket: TcpStream,
-    ws_response: &str,
-    response: &str
+    ws_response: Arc<String>,
+    response: Arc<String>
 ) -> Result<(), Box<dyn Error>> {
-    let mut client_buffer = vec![0; BUFLEN];
-    client_socket.write_all(ws_response.as_ref()).await?;
+    let mut client_buffer = vec![0; 4096];
+    client_socket.write_all(ws_response.as_bytes()).await?;
 
     let n = client_socket.read(&mut client_buffer).await?;
     let payload = &client_buffer[..n];
-    if let Ok(payload_str) = String::from_utf8(payload.to_vec()) {
-        if !payload_str.to_lowercase().contains("upgrade: websocket") && !payload_str.contains("upgrade: ws") {
-            client_socket.write_all(response.as_ref()).await?;
+    if let Ok(mut payload_str) = String::from_utf8(payload.to_vec()) {
+        payload_str = payload_str.to_lowercase();
+        if !payload_str.contains("upgrade: websocket") && !payload_str.contains("upgrade: ws") {
+            client_socket.write_all(response.as_bytes()).await?;
         }
     }
 
@@ -62,58 +59,25 @@ async fn handle_client(
     Ok(())
 }
 
-
 async fn connect_target(host: &str, client_socket: &mut TcpStream) -> Result<(), Box<dyn Error>> {
-    let mut retries = 3;
-    while retries > 0 {
-        match TcpStream::connect(host).await {
-            Ok(mut target_socket) => {
-                do_forwarding(client_socket, &mut target_socket).await?;
-                return Ok(());
-            }
-            Err(e) => {
-                eprintln!("Error connecting to target {}: {}", host, e);
-                retries -= 1;
-                if retries == 0 {
-                    return Err(Box::new(e));
-                }
-            }
+    match TcpStream::connect(host).await {
+        Ok(mut target_socket) => {
+            do_forwarding(client_socket, &mut target_socket).await?;
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Error connecting to target {}: {}", host, e);
+            Err(Box::new(e))
         }
     }
-    Ok(())
 }
 
 async fn do_forwarding(client_socket: &mut TcpStream, target_socket: &mut TcpStream) -> Result<(), Box<dyn Error>> {
-    let mut client_buf = vec![0; BUFLEN];
-    let mut target_buf = vec![0; BUFLEN];
-
-    loop {
-        tokio::select! {
-            result = client_socket.read(&mut client_buf) => {
-                match result {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        target_socket.write_all(&client_buf[..n]).await?;
-                    }
-                    Err(e) => {
-                        eprintln!("Forwarding error from client: {}", e);
-                        break;
-                    }
-                }
-            }
-            result = target_socket.read(&mut target_buf) => {
-                match result {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        client_socket.write_all(&target_buf[..n]).await?;
-                    }
-                    Err(e) => {
-                        eprintln!("Forwarding error from target: {}", e);
-                        break;
-                    }
-                }
-            }
-        }
+    let (mut client_reader, mut client_writer) = io::split(client_socket);
+    let (mut target_reader, mut target_writer) = io::split(target_socket);
+    tokio::select! {
+        _ = io::copy(&mut client_reader, &mut target_writer) => {}
+        _ = io::copy(&mut target_reader, &mut client_writer) => {}
     }
 
     Ok(())

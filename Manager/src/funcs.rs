@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::{TcpListener};
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
@@ -512,6 +513,40 @@ pub fn speedtest_data() -> SpeedTestData {
     serde_json::from_str(&json).unwrap()
 }
 
+
+
+#[derive(Debug)]
+pub struct Service {
+    pub(crate) name: String,
+    pub(crate) ports: Vec<u16>,
+}
+
+pub fn get_services() -> Vec<Service> {
+    let command = "netstat -tulnp | awk '/LISTEN/ {split($4, a, \":\"); split($7, b, \"/\"); gsub(\":\", \"\", b[2]); if (!seen[b[2] a[length(a)]]++) ports[b[2]] = ports[b[2]] \" \" a[length(a)]} END {for (service in ports) print service, ports[service]}' | sort -u";
+
+    let output_str = run_command_and_get_output(command);
+    let mut services_map: HashMap<String, Vec<u16>> = HashMap::new();
+
+    for line in output_str.lines() {
+        let mut parts = line.split_whitespace();
+        if let Some(service_name) = parts.next() {
+            let service_name = service_name.to_string();
+            let ports: Vec<u16> = parts
+                .filter_map(|port_str| port_str.parse::<u16>().ok())
+                .collect();
+
+            services_map.insert(service_name, ports);
+        }
+    }
+
+    services_map
+        .into_iter()
+        .map(|(name, ports)| Service { name, ports })
+        .collect()
+}
+
+
+
 fn run_command(command: String) -> &'static str {
     let exec = Command::new("bash")
         .arg("-c")
@@ -539,6 +574,8 @@ pub fn run_command_and_get_output(command: &str) -> String {
     let output = std::str::from_utf8(&exec.stdout).unwrap_or("Error converting output");
     output.trim().to_string()
 }
+
+
 fn days_to_expire_date(days: usize) -> String {
     let now: DateTime<Local> = Local::now();
     let expiry_date = now + Duration::days(days as i64);

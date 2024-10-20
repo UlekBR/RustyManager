@@ -5,15 +5,15 @@ PermitRootLogin yes
 PasswordAuthentication yes
 PermitTunnel yes
 TCPKeepAlive yes
-UsePAM yes
+UsePAM no
 Banner /etc/bannerssh
 Subsystem sftp /usr/lib/openssh/sftp-server
 
 # Otimizações para conexões SSH
 MaxStartups 5000:10:5000
-ClientAliveInterval 30
-ClientAliveCountMax 2
+ClientAliveInterval 60
+ClientAliveCountMax 3
 LoginGraceTime 60
 MaxAuthTries 3
-Compression yes
+Compression no
 UseDNS no

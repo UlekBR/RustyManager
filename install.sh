@@ -69,7 +69,7 @@ else
     # ---->>>> Instalação de pacotes requisitos e atualização do sistema
     show_progress "Atualizando o sistema..."
     apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-    apt-get install gnupg curl build-essential git cmake sysstat sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
     increment_step
 
     # ---->>>> Criando o diretorio do script
@@ -116,7 +116,7 @@ else
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
     mv ./target/release/SshScript /opt/rustymanager/manager
     mv ./target/release/CheckUser /opt/rustymanager/checkuser
-    mv ./target/release/RustyProxy /opt/rustymanager/proxy
+    mv ./target/release/RustyProxy /opt/rustymanager/rustyproxy
     mv ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
     increment_step
 
@@ -140,6 +140,7 @@ else
     apt-get install -y stunnel4 > /dev/null 2>&1 || error_exit "Falha ao instalar STunnel"
     wget -O /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
     wget -O /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
+    wget -O /etc/stunnel/stunnel.conf https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/conf > /dev/null 2>&1 || error_exit "Falha ao baixar config"
     sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4 || error_exit "Falha ao configurar STunnel"
     systemctl stop stunnel4 > /dev/null 2>&1
     systemctl disable stunnel4 > /dev/null 2>&1
@@ -160,7 +161,7 @@ else
 
     # ---->>>> Substituindo arquivo sshdconfig
     show_progress "Otimizando ssh..."
-    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/config > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
+    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/conf > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
     systemctl restart ssh > /dev/null 2>&1
     systemctl restart sshd > /dev/null 2>&1
     increment_step
