@@ -21,7 +21,7 @@ menu
 Se você estiver desenvolvendo ou quiser entender melhor as funcionalidades do RustyManager, aqui está a documentação dos comandos disponíveis. Você pode visualizar essa documentação usando a opção `--help`:
 
 ```bash
-/opt/rustymanager/badmanager --help
+/opt/rustymanager/manager --help
 ```
 
 ### Comandos Disponíveis
