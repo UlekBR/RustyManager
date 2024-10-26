@@ -379,9 +379,22 @@ pub fn enable_proxy_port(port: String, status: String) {
         run_command(format!("/opt/rustymanager/connectionsmanager --conn proxy --enable-port {} --status {}", port, status));
     }
 }
+
+pub fn enable_proxy_ssl_port(port: String, status: String) {
+    if status.is_empty() {
+        run_command(format!("/opt/rustymanager/connectionsmanager --conn proxyssl --enable-port {}", port));
+    } else {
+        run_command(format!("/opt/rustymanager/connectionsmanager --conn proxyssl --enable-port {} --status {}", port, status));
+    }
+}
+
 pub fn disable_proxy_port(port: String) {
     run_command(format!("/opt/rustymanager/connectionsmanager --conn proxy --disable-port {}", port));
 }
+
+
+
+
 pub fn enable_stunnel_port(port: String, ipv6: bool) {
     if ipv6 {
         run_command(format!("/opt/rustymanager/connectionsmanager --conn stunnel --enable-port {} --ipv6 true", port));

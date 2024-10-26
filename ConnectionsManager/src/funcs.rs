@@ -40,9 +40,9 @@ pub fn is_port_available(port: usize) -> Result<bool, bool> {
     }
 }
 
-pub fn add_proxy_port(port: usize, status: Option<String>) -> Result<(), io::Error> {
+pub fn add_proxy_port(mode: String, port: usize, status: Option<String>) -> Result<(), io::Error> {
     
-    let mut command = format!("/opt/rustymanager/rustyproxy --port {}", port);
+    let mut command = format!("/opt/rustymanager/rustyproxy --mode {} --port {}", mode, port);
     if status.is_some() {
         command = format!("{} --status {}", command, status.unwrap_or("@RustyProxy".to_string()));
     }
