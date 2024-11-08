@@ -3,9 +3,3 @@ name = "RustyProxy"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["io-util", "net", "macros", "rt-multi-thread", "sync"] }
-clap = { version = "4.5.20", features = ["derive"] }
-tokio-rustls = "0.26.0"
-rustls = "0.23.15"
-rustls-pemfile = "2.2.0"
-rustls-pki-types = "1.10.0"

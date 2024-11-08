@@ -864,7 +864,7 @@ fn utils_menu(sqlite_conn: &Connection) {
 fn proxy_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        
+
         println!("------------------------------------------------");
         println!("|                  {}                 |", text_to_bold("RUSTY PROXY"));
         println!("------------------------------------------------");
@@ -879,8 +879,7 @@ fn proxy_menu(sqlite_conn: &Connection) {
 
         println!("------------------------------------------------");
         println!("| {:<45}|", "1 - Abrir Porta");
-        println!("| {:<45}|", "2 - Abrir Porta SSL");
-        println!("| {:<45}|", "3 - Fechar Porta");
+        println!("| {:<45}|", "2 - Fechar Porta");
         println!("| {:<45}|", "0 - Voltar ao menu");
         println!("------------------------------------------------");
         println!();
@@ -925,40 +924,6 @@ fn proxy_menu(sqlite_conn: &Connection) {
                         io::stdin().read_line(&mut return_string).expect("");
                     }
                     2 => {
-                        let mut port = String::new();
-                        loop {
-                            println!("Digite a porta: ");
-                            if !port.is_empty() {
-                                port = String::new();
-                            };
-                            io::stdin().read_line(&mut port).unwrap();
-                            port = port.trim().to_string();
-                            match port.parse::<usize>() {
-                                Ok(port) => {
-                                    if !is_port_avaliable(port).unwrap() {
-                                        println!("essa porta já está em uso, digite outra:")
-                                    } else {
-                                        break
-                                    }
-                                }
-                                Err(..) => {
-                                    println!("digite uma porta valida");
-                                }
-                            }
-
-                        }
-                        println!("Digite o status de conexão (não digite nada para o padrão): ");
-                        let mut status = String::new();
-                        io::stdin().read_line(&mut status).unwrap();
-                        status = status.trim().to_string();
-
-                        enable_proxy_ssl_port(port, status);
-                        Command::new("clear").status().unwrap();
-                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
-                        let mut return_string = String::new();
-                        io::stdin().read_line(&mut return_string).expect("");
-                    }
-                    3 => {
                         let mut port = String::new();
                         loop {
                             println!("Digite a porta: ");

@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=14
+TOTAL_STEPS=13
 CURRENT_STEP=0
 
 show_progress() {
@@ -24,23 +24,23 @@ else
     clear
     show_progress "Atualizando repositorios..."
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
     SCRIPT_VERSION="beta"
     increment_step
 
     # ---->>>> Verificação do sistema
     show_progress "Verificando o sistema..."
-    if ! command -v lsb_release &> /dev/null; then
-        apt-get install lsb-release -y > /dev/null 2>&1 || error_exit "Falha ao instalar lsb-release"
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS_NAME=$ID
+        VERSION=$VERSION_ID
+    else
+        error_exit "Não foi possível detectar o sistema operacional."
     fi
     increment_step
 
     # ---->>>> Verificação do sistema
-    OS_NAME=$(lsb_release -is)
-    VERSION=$(lsb_release -rs)
-
     case $OS_NAME in
-        Ubuntu)
+        ubuntu)
             case $VERSION in
                 24.*|22.*|20.*|18.*)
                     show_progress "Sistema Ubuntu suportado, continuando..."
@@ -50,7 +50,7 @@ else
                     ;;
             esac
             ;;
-        Debian)
+        debian)
             case $VERSION in
                 12*|11*|10*|9*)
                     show_progress "Sistema Debian suportado, continuando..."
@@ -60,16 +60,34 @@ else
                     ;;
             esac
             ;;
+        almalinux|rocky)
+            case $VERSION in
+                9*|8*)
+                    show_progress "Sistema $OS_NAME suportado, continuando..."
+                    ;;
+                *)
+                    error_exit "Versão do $OS_NAME não suportada. Use 8 ou 9."
+                    ;;
+            esac
+            ;;
         *)
-            error_exit "Sistema não suportado. Use Ubuntu ou Debian."
+            error_exit "Sistema não suportado. Use Ubuntu, Debian, AlmaLinux ou Rocky Linux."
             ;;
     esac
     increment_step
 
     # ---->>>> Instalação de pacotes requisitos e atualização do sistema
     show_progress "Atualizando o sistema..."
-    apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-    apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    case $OS_NAME in
+        ubuntu|debian)
+            apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
+            apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            ;;
+        almalinux|rocky)
+            dnf update -y
+            dnf install epel-release gnupg2 curl gcc g++ make git cmake sysstat net-tools sqlite sqlite-devel -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            ;;
+    esac
     increment_step
 
     # ---->>>> Criando o diretorio do script
@@ -123,9 +141,8 @@ else
 
     # ---->>>> Baixando arquivos para o ssl
     show_progress "Baixando arquivos para ssl..."
-    apt-get install -y stunnel4 > /dev/null 2>&1 || error_exit "Falha ao instalar STunnel"
-    wget -O /opt/rustymanager/ssl/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/main/Utils/ssl/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
-    wget -O /opt/rustymanager/ssl/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/main/Utils/ssl/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
+    wget -O /opt/rustymanager/ssl/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/ssl/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
+    wget -O /opt/rustymanager/ssl/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/ssl/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
     increment_step
 
     # ---->>>> Compilar BadVPN
@@ -147,20 +164,26 @@ else
     # ---->>>> Instalar speedtest
     show_progress "Instalando Speedtest..."
     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
-    apt-get install -y speedtest > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
+    case $OS_NAME in
+        ubuntu|debian)
+            apt-get install speedtest -y || error_exit "Falha ao instalar o speedtest"
+            ;;
+        almalinux|rocky)
+            dnf install speedtest -y || error_exit "Falha ao instalar o speedtest"
+            ;;
+    esac
     increment_step
     
     # ---->>>> Instalar Htop
     show_progress "Instalando monitor de recursos..."
-    apt-get install -y htop > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
-    increment_step
-
-
-    # ---->>>> Substituindo arquivo sshdconfig
-    show_progress "Otimizando ssh..."
-    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/sshd/config > /dev/null 2>&1 || error_exit "Falha ao baixar sshd_config"
-    systemctl restart ssh > /dev/null 2>&1
-    systemctl restart sshd > /dev/null 2>&1
+    case $OS_NAME in
+        ubuntu|debian)
+            apt-get install htop -y || error_exit "Falha ao instalar o htop"
+            ;;
+        almalinux|rocky)
+            dnf install htop -y || error_exit "Falha ao instalar o htop"
+            ;;
+    esac
     increment_step
 
     # ---->>>> Limpeza
