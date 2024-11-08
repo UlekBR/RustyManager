@@ -40,9 +40,9 @@ pub fn is_port_available(port: usize) -> Result<bool, bool> {
     }
 }
 
-pub fn add_proxy_port(mode: String, port: usize, status: Option<String>) -> Result<(), io::Error> {
+pub fn add_proxy_port(port: usize, status: Option<String>) -> Result<(), io::Error> {
     
-    let mut command = format!("/opt/rustymanager/rustyproxy --mode {} --port {}", mode, port);
+    let mut command = format!("/opt/rustymanager/rustyproxy --port {}", port);
     if status.is_some() {
         command = format!("{} --status {}", command, status.unwrap_or("@RustyProxy".to_string()));
     }
@@ -75,9 +75,9 @@ WantedBy=multi-user.target
         .write(true)
         .create(true)
         .truncate(true)
-        .open(service_file_path).unwrap();
+        .open(service_file_path)?;
 
-    file.write_all(service_file_content.as_bytes()).unwrap();
+    file.write_all(service_file_content.as_bytes())?;
 
     let commands = [
         "systemctl daemon-reload".to_string(),
@@ -97,7 +97,7 @@ pub fn del_proxy_port(port: usize) -> Result<(), io::Error> {
     for command in commands {
         run_command(command);
     }
-    fs::remove_file(format!("/etc/systemd/system/proxy{}.service", port)).unwrap();
+    fs::remove_file(format!("/etc/systemd/system/rustyproxy{}.service", port)).unwrap();
     Ok(())
 }
 

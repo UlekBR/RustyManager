@@ -163,12 +163,14 @@ else
 
     # ---->>>> Instalar speedtest
     show_progress "Instalando Speedtest..."
-    curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
+
     case $OS_NAME in
         ubuntu|debian)
+            curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
             apt-get install speedtest -y > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
             ;;
         almalinux|rocky)
+            curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.rpm.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
             dnf install speedtest -y > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
             ;;
     esac

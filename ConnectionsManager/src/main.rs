@@ -24,58 +24,12 @@ fn main() -> Result<()> {
                                         if is_port_available(port).expect("error on check port use") {
                                             if let Some(_status_arg) = args.get(5) {
                                                 if let Some(status) = args.get(6) {
-                                                    add_proxy_port("http".to_string(), port, Some(status.clone())).expect("error on enable port");
+                                                    add_proxy_port(port, Some(status.clone())).expect("error on enable port");
                                                 } else {
-                                                    add_proxy_port("http".to_string(), port, None).expect("error on enable port");
+                                                    add_proxy_port(port, None).expect("error on enable port");
                                                 }
                                             } else {
-                                                add_proxy_port("http".to_string(), port, None).expect("error on enable port");
-                                            }
-                                            add_proxy_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
-                                        }
-                                    }
-                                    Err(_) => {
-                                        println!("invalid port");
-                                    }
-                                }
-                            }
-                        }
-                        "--disable-port" => {
-                            if let Some(port_str) = args.get(4) {
-                                match port_str.parse::<usize>() {
-                                    Ok(port) => {
-                                        if !is_port_available(port).expect("error on check port use") {
-                                            del_proxy_port(port).expect("error on disable port");
-                                            del_proxy_port_in_db(&sqlite_conn, port as u16).expect("error on delete port in db");
-                                        }
-                                    }
-                                    Err(_) => {
-                                        println!("invalid port");
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            println!("specify a valid action [--enable-port, --disable-port]");
-                        }
-                    }
-                },
-                "proxyssl" => {
-                    let action_arg = args.get(3).unwrap();
-                    match action_arg.as_str() {
-                        "--enable-port" => {
-                            if let Some(port_str) = args.get(4) {
-                                match port_str.parse::<usize>() {
-                                    Ok(port) => {
-                                        if is_port_available(port).expect("error on check port use") {
-                                            if let Some(_status_arg) = args.get(5) {
-                                                if let Some(status) = args.get(6) {
-                                                    add_proxy_port("https".to_string(), port, Some(status.clone())).expect("error on enable port");
-                                                } else {
-                                                    add_proxy_port("https".to_string(), port, None).expect("error on enable port");
-                                                }
-                                            } else {
-                                                add_proxy_port("https".to_string(), port, None).expect("error on enable port");
+                                                add_proxy_port(port, None).expect("error on enable port");
                                             }
                                             add_proxy_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
                                         }
