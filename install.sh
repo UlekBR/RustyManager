@@ -84,7 +84,7 @@ else
             apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
         almalinux|rocky)
-            dnf update -y
+            dnf update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
             dnf install epel-release gnupg2 curl gcc g++ make git cmake sysstat net-tools sqlite sqlite-devel -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
     esac
@@ -133,10 +133,10 @@ else
 
     cd /root/RustyManager/
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
-    mv ./target/release/SshScript /opt/rustymanager/manager
-    mv ./target/release/CheckUser /opt/rustymanager/checkuser
-    mv ./target/release/RustyProxy /opt/rustymanager/rustyproxy
-    mv ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
+    mv -f ./target/release/SshScript /opt/rustymanager/manager
+    mv -f ./target/release/CheckUser /opt/rustymanager/checkuser
+    mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy
+    mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
     increment_step
 
     # ---->>>> Baixando arquivos para o ssl
@@ -151,12 +151,12 @@ else
     cd /root/RustyManager/BadVpn/badvpn/badvpn-build
     cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 > /dev/null 2>&1 || error_exit "Falha ao configurar cmake para BadVPN"
     make > /dev/null 2>&1 || error_exit "Falha ao compilar BadVPN"
-    mv udpgw/badvpn-udpgw /opt/rustymanager/badvpn
+    mv -f udpgw/badvpn-udpgw /opt/rustymanager/badvpn
     increment_step
 
     # ---->>>> Configuração de permissões
     show_progress "Configurando permissões..."
-    chmod +x /opt/rustymanager/{manager,proxy,connectionsmanager,checkuser,badvpn}
+    chmod +x /opt/rustymanager/{manager,rustyproxy,connectionsmanager,checkuser,badvpn}
     ln -sf /opt/rustymanager/manager /usr/local/bin/menu
     increment_step
 
@@ -166,10 +166,10 @@ else
     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
     case $OS_NAME in
         ubuntu|debian)
-            apt-get install speedtest -y || error_exit "Falha ao instalar o speedtest"
+            apt-get install speedtest -y > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
             ;;
         almalinux|rocky)
-            dnf install speedtest -y || error_exit "Falha ao instalar o speedtest"
+            dnf install speedtest -y > /dev/null 2>&1 || error_exit "Falha ao instalar o speedtest"
             ;;
     esac
     increment_step
@@ -178,10 +178,10 @@ else
     show_progress "Instalando monitor de recursos..."
     case $OS_NAME in
         ubuntu|debian)
-            apt-get install htop -y || error_exit "Falha ao instalar o htop"
+            apt-get install htop -y > /dev/null 2>&1 || error_exit "Falha ao instalar o htop"
             ;;
         almalinux|rocky)
-            dnf install htop -y || error_exit "Falha ao instalar o htop"
+            dnf install htop -y > /dev/null 2>&1 || error_exit "Falha ao instalar o htop"
             ;;
     esac
     increment_step
