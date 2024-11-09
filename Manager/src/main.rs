@@ -1389,10 +1389,24 @@ fn openvpn_menu(sqlite_conn: &Connection) {
 
                             }
 
-                            enable_openvpn(port);
+                            let mut mode = String::new();
+                            loop {
+                                println!("Digite o modo (tcp or udp): ");
+                                if !mode.is_empty() {
+                                    mode = String::new();
+                                };
+                                io::stdin().read_line(&mut port).unwrap();
+                                mode = mode.trim().to_string();
+                                if mode != "tcp" || mode != "udp" {
+                                    break
+                                }
+                            }
+
+                            enable_openvpn(port, mode);
 
                             Command::new("clear").status().unwrap();
-                            println!("\n> OpenVPN ativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                            println!("\n> OpenVPN ativado com sucesso");
+                            println!("\n> Certificado salvo em: /root/client.ovpn, pressione qualquer tecla para voltar ao menu");
                             let mut return_string = String::new();
                             io::stdin().read_line(&mut return_string).expect("");
 

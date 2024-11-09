@@ -433,8 +433,8 @@ pub fn disable_checkuser_port(port: String) {
     run_command(format!("/opt/rustymanager/connectionsmanager --conn checkuser --disable-port {}", port));
 }
 
-pub fn enable_openvpn(port: String) {
-    run_command(format!("/opt/rustymanager/connectionsmanager --conn openvpn --enable {}", port));
+pub fn enable_openvpn(port: String, mode: String) {
+    run_command(format!("/opt/rustymanager/connectionsmanager --conn openvpn --enable {} --mode {}", port, mode));
 }
 
 pub fn disable_openvpn() {

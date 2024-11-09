@@ -145,7 +145,11 @@ fn main() -> Result<()> {
                                 match port_str.parse::<usize>() {
                                     Ok(port) => {
                                         if is_port_available(port).expect("error on check port use") {
-                                            enable_openvpn(port).expect("error on enable port");
+                                            if let Some(_mode_arg) = args.get(5) {
+                                                if let Some(mode) = args.get(6) {
+                                                    enable_openvpn(port, mode.to_string()).expect("error on enable port");
+                                                }
+                                            }
                                             add_openvpn_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
                                         }
                                     }

@@ -267,11 +267,42 @@ pub fn del_checkuser_port(port: usize) -> std::result::Result<(), io::Error> {
     Ok(())
 }
 
-pub fn enable_openvpn(port: usize) -> std::result::Result<(), io::Error> {
-    let port_str = port.to_string();
+pub fn enable_openvpn(port: usize, mode: String) -> std::result::Result<(), io::Error> {
     let commands = [
-        format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port_str),
+        format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port.to_string()),
+        format!("sed -i 's/^proto [^ ]\\+/proto {}/g' /etc/openvpn/server.conf", mode),
         "systemctl start openvpn".to_string(),
+        format!("echo \"client
+dev tun
+proto {}
+sndbuf 0
+rcvbuf 0
+remote 127.0.0.1 {}
+resolv-retry 5
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+cipher AES-256-CBC
+comp-lzo yes
+setenv opt block-outside-dns
+key-direction 1
+verb 3
+auth-user-pass
+keepalive 10 120
+float
+    <ca>
+$(cat /etc/openvpn/ca.crt)
+    </ca>
+    <cert>
+$(cat /etc/openvpn/easy-rsa/pki/issued/client.crt)
+    </cert>
+    <key>
+$(cat /etc/openvpn/easy-rsa/pki/private/client.key)
+    </key>
+    <tls-auth>
+$(cat /etc/openvpn/ta.key)
+    </tls-auth>\" > /root/client.ovpn", mode, port)
     ];
     for command in commands {
         run_command(command);
@@ -281,7 +312,8 @@ pub fn enable_openvpn(port: usize) -> std::result::Result<(), io::Error> {
 pub fn disable_openvpn() -> std::result::Result<(), io::Error> {
     let commands = [
         "sed -i 's/^port [^ ]\\+/port none/g' /etc/openvpn/server.conf".to_string(),
-        "systemctl stop openvpn".to_string()
+        "systemctl stop openvpn".to_string(),
+        "rm -f /root/client.ovpn".to_string()
     ];
     for command in commands {
         run_command(command);
