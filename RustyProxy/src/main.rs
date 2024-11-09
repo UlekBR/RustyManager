@@ -6,7 +6,9 @@ use std::{env, thread};
 
 fn main() {
     // Iniciando o proxy
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", get_port())).unwrap();
+    let port = get_port();
+    let listener = TcpListener::bind(format!("[::]:{}", port)).unwrap();
+    println!("Iniciando serviço na porta: {}", port);
     start_http(listener);
 }
 
