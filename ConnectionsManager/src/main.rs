@@ -156,19 +156,8 @@ fn main() -> Result<()> {
                             }
                         }
                         "--disable" => {
-                            if let Some(port_str) = args.get(4) {
-                                match port_str.parse::<usize>() {
-                                    Ok(port) => {
-                                        if !is_port_available(port).expect("error on check port use") {
-                                            disable_openvpn().expect("error on disable port");
-                                            del_openvpn_port_in_db(&sqlite_conn).expect("error on delete port in db");
-                                        }
-                                    }
-                                    Err(_) => {
-                                        println!("invalid port");
-                                    }
-                                }
-                            }
+                            disable_openvpn().expect("error on disable port");
+                            del_openvpn_port_in_db(&sqlite_conn).expect("error on delete port in db");
                         }
                         _ => {
                             println!("specify a valid action [--enable, --disable]");
