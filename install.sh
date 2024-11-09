@@ -234,56 +234,53 @@ else
         openvpn --genkey --secret /etc/openvpn/ta.key  > /dev/null 2>&1 || error_exit "Falha ao gerar a chave"
     fi
 
-    if [ ! -f "/etc/openvpn/server.conf" ]; then
-        echo "port XXXX
-    proto tcp
-    dev tun
-    sndbuf 0
-    rcvbuf 0
-    ca /etc/openvpn/ca.crt
-    cert /etc/openvpn/server.crt
-    key /etc/openvpn/server.key
-    dh /etc/openvpn/dh.pem
-    tls-auth /etc/openvpn/ta.key 0
-    topology subnet
-    server 10.8.0.0 255.255.255.0
-    ifconfig-pool-persist ipp.txt
-    verb 3
-    push \"redirect-gateway def1 bypass-dhcp\"
-    push \"dhcp-option DNS 8.8.8.8\"
-    push \"dhcp-option DNS 8.8.4.4\"
-    keepalive 10 120
-    float
-    cipher AES-256-CBC
-    comp-lzo yes
-    user nobody
-    group nogroup
-    persist-key
-    persist-tun
-    status openvpn-status.log
-    management localhost 7505
-    client-to-client
-    client-cert-not-required
-    username-as-common-name
-    plugin \$(find /usr -type f -name 'openvpn-plugin-auth-pam.so') login
-    duplicate-cn" > /etc/openvpn/server.conf  > /dev/null 2>&1 || error_exit "Falha ao criar openvpn server.conf"
 
-        # Iniciar e habilitar o serviço OpenVPN
-        echo 1 > /proc/sys/net/ipv4/ip_forward > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
-        sed -i '/net.ipv4.ip_forward/s/^#//g' /etc/sysctl.conf > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
-        sysctl -p > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
-        iptables -t nat -F > /dev/null 2>&1 || error_exit "Falha ao limpar regras do iptables"
-        iptables -F > /dev/null 2>&1 || error_exit "Falha ao limpar regras do iptables"
-        iptables -P INPUT ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
-        iptables -P FORWARD ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
-        iptables -P OUTPUT ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
-        iptables -t nat -A POSTROUTING -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE > /dev/null 2>&1 || error_exit "Falha ao adicionar regra para permitir o trafego do openvpn no iptables"
+        echo "port none
+proto none
+dev tun
+sndbuf 0
+rcvbuf 0
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/server.crt
+key /etc/openvpn/server.key
+dh /etc/openvpn/dh.pem
+tls-auth /etc/openvpn/ta.key 0
+topology subnet
+server 10.8.0.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
+verb 3
+push \"redirect-gateway def1 bypass-dhcp\"
+push \"dhcp-option DNS 8.8.8.8\"
+push \"dhcp-option DNS 8.8.4.4\"
+keepalive 10 120
+float
+cipher AES-256-CBC
+comp-lzo yes
+user nobody
+group nogroup
+persist-key
+persist-tun
+status openvpn-status.log
+management localhost 7505
+client-to-client
+client-cert-not-required
+username-as-common-name
+plugin \$(find /usr -type f -name 'openvpn-plugin-auth-pam.so') login
+duplicate-cn" > /etc/openvpn/server.conf  > /dev/null 2>&1 || error_exit "Falha ao criar openvpn server.conf"
 
-    fi
+    # Iniciar e habilitar o serviço OpenVPN
+    echo 1 > /proc/sys/net/ipv4/ip_forward > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
+    sed -i '/net.ipv4.ip_forward/s/^#//g' /etc/sysctl.conf > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
+    sysctl -p > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
+    iptables -t nat -F > /dev/null 2>&1 || error_exit "Falha ao limpar regras do iptables"
+    iptables -F > /dev/null 2>&1 || error_exit "Falha ao limpar regras do iptables"
+    iptables -P INPUT ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
+    iptables -P FORWARD ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
+    iptables -P OUTPUT ACCEPT > /dev/null 2>&1 || error_exit "Falha ao adicionar regras do iptables"
+    iptables -t nat -A POSTROUTING -o $(ip route | grep default | awk '{print $5}') -j MASQUERADE > /dev/null 2>&1 || error_exit "Falha ao adicionar regra para permitir o trafego do openvpn no iptables"
 
-    systemctl start openvpn@server > /dev/null 2>&1
-    systemctl enable openvpn@server > /dev/null 2>&1
-
+    systemctl stop openvpn@server > /dev/null 2>&1
+    systemctl disable openvpn@server > /dev/null 2>&1
     increment_step
 
 

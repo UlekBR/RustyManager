@@ -1391,13 +1391,13 @@ fn openvpn_menu(sqlite_conn: &Connection) {
 
                             let mut mode = String::new();
                             loop {
-                                println!("Digite o modo (tcp or udp): ");
+                                println!("Digite o modo (tcp ou udp): ");
                                 if !mode.is_empty() {
                                     mode = String::new();
                                 };
                                 io::stdin().read_line(&mut port).unwrap();
                                 mode = mode.trim().to_string();
-                                if mode != "tcp" || mode != "udp" {
+                                if mode == "tcp" || mode == "udp" {
                                     break
                                 }
                             }
