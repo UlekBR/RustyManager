@@ -1397,6 +1397,7 @@ fn openvpn_menu(sqlite_conn: &Connection) {
                                 };
                                 io::stdin().read_line(&mut port).unwrap();
                                 mode = mode.trim().to_string();
+                                println!("modo selecionado: {}", mode);
                                 if mode == "tcp" || mode == "udp" {
                                     break
                                 }
