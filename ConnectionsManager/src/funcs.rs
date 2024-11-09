@@ -272,7 +272,17 @@ pub fn enable_openvpn(port: usize, mode: String) -> std::result::Result<(), io::
         format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port.to_string()),
         format!("sed -i 's/^proto [^ ]\\+/proto {}/g' /etc/openvpn/server.conf", mode),
         "systemctl start openvpn".to_string(),
-        format!("echo \"client
+    ];
+    for command in commands {
+        run_command(command);
+    }
+    let ca_cert = fs::read_to_string("/etc/openvpn/ca.crt")?;
+    let client_cert = fs::read_to_string("/etc/openvpn/easy-rsa/pki/issued/client.crt")?;
+    let client_key = fs::read_to_string("/etc/openvpn/easy-rsa/pki/private/client.key")?;
+    let ta_key = fs::read_to_string("/etc/openvpn/ta.key")?;
+
+    let client_config = format!(r#"
+client
 dev tun
 proto {}
 sndbuf 0
@@ -291,22 +301,22 @@ verb 3
 auth-user-pass
 keepalive 10 120
 float
-    <ca>
-$(cat /etc/openvpn/ca.crt)
-    </ca>
-    <cert>
-$(cat /etc/openvpn/easy-rsa/pki/issued/client.crt)
-    </cert>
-    <key>
-$(cat /etc/openvpn/easy-rsa/pki/private/client.key)
-    </key>
-    <tls-auth>
-$(cat /etc/openvpn/ta.key)
-    </tls-auth>\" > /root/client.ovpn", mode, port)
-    ];
-    for command in commands {
-        run_command(command);
-    }
+<ca>
+{}
+</ca>
+<cert>
+{}
+</cert>
+<key>
+{}
+</key>
+<tls-auth>
+{}
+</tls-auth>
+"#, mode, port, ca_cert, client_cert, client_key, ta_key);
+
+    fs::write("/root/client.ovpn", client_config)?;
+
     Ok(())
 }
 pub fn disable_openvpn() -> std::result::Result<(), io::Error> {
