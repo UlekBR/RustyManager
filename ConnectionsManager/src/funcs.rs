@@ -101,29 +101,71 @@ pub fn del_proxy_port(port: usize) -> Result<(), io::Error> {
     Ok(())
 }
 
+fn get_stunnel_service() -> Result<String, io::Error> {
+    let output = std::process::Command::new("systemctl")
+        .arg("is-active")
+        .arg("stunnel4")
+        .output()?;
+
+    if output.status.success() {
+        Ok("stunnel4".to_string())
+    } else {
+        let output = std::process::Command::new("systemctl")
+            .arg("is-active")
+            .arg("stunnel")
+            .output()?;
+
+        if output.status.success() {
+            Ok("stunnel".to_string())
+        } else {
+            Err(io::Error::new(io::ErrorKind::NotFound, "No stunnel service found"))
+        }
+    }
+}
+
 pub fn add_stunnel_port(port: usize, ipv6: bool) -> std::result::Result<(), io::Error> {
     let port_str = port.to_string();
     let prefix = if ipv6 { ":::" } else { "0.0.0.0:" };
+
+    let stunnel_service = get_stunnel_service()?;
+    let service_command = match stunnel_service.as_str() {
+        "stunnel4" => "sudo systemctl restart stunnel4",
+        "stunnel" => "sudo systemctl restart stunnel",
+        _ => return Err(io::Error::new(io::ErrorKind::NotFound, "Invalid stunnel service")),
+    };
+
     let commands = [
         format!("grep -qE '^(::|0\\.0\\.0\\.0:)?{port_str}$' /etc/stunnel/stunnel.conf || echo '\naccept = {prefix}{port_str}' >> /etc/stunnel/stunnel.conf"),
-        "sudo systemctl is-active --quiet stunnel4 && sudo systemctl restart stunnel4 || sudo systemctl start stunnel4".to_string(),
+        service_command.to_string(),
     ];
+
     for command in commands {
         run_command(command);
     }
+
     Ok(())
 }
+
 pub fn del_stunnel_port(port: usize) -> std::result::Result<(), io::Error> {
     let port_str = port.to_string();
+
+    let stunnel_service = get_stunnel_service()?;
+    let service_command = match stunnel_service.as_str() {
+        "stunnel4" => "sudo systemctl restart stunnel4",
+        "stunnel" => "sudo systemctl restart stunnel",
+        _ => return Err(io::Error::new(io::ErrorKind::NotFound, "Invalid stunnel service")),
+    };
+
     let commands = [
         format!("sed -i '/{port_str}/d' /etc/stunnel/stunnel.conf"),
-        "systemctl restart stunnel4.service".to_string(),
-        "grep -q 'accept' /etc/stunnel/stunnel.conf  && sudo systemctl restart stunnel4 || sudo systemctl stop stunnel4".to_string()
-
+        service_command.to_string(),
+        "grep -q 'accept' /etc/stunnel/stunnel.conf && sudo systemctl restart stunnel4 || sudo systemctl stop stunnel4".to_string(),
     ];
+
     for command in commands {
         run_command(command);
     }
+
     Ok(())
 }
 pub fn add_badvpn_port(port: usize) -> std::result::Result<(), io::Error> {
