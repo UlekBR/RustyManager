@@ -105,7 +105,7 @@ pub fn add_stunnel_port(port: usize, ipv6: bool) -> std::result::Result<(), io::
     let port_str = port.to_string();
     let prefix = if ipv6 { ":::" } else { "0.0.0.0:" };
     let commands = [
-        format!("grep -qE '^(::|0\\.0\\.0\\.0:)?{port_str}$' /etc/stunnel/stunnel.conf || echo 'accept = {prefix}{port_str}' >> /etc/stunnel/stunnel.conf"),
+        format!("grep -qE '^(::|0\\.0\\.0\\.0:)?{port_str}$' /etc/stunnel/stunnel.conf || echo '\naccept = {prefix}{port_str}' >> /etc/stunnel/stunnel.conf"),
         "sudo systemctl is-active --quiet stunnel4 && sudo systemctl restart stunnel4 || sudo systemctl start stunnel4".to_string(),
     ];
     for command in commands {
