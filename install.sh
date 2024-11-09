@@ -119,7 +119,7 @@ else
     ALTER TABLE connections ADD COLUMN badvpn_ports TEXT;
     ALTER TABLE connections ADD COLUMN checkuser_ports TEXT;
     ALTER TABLE connections ADD COLUMN openvpn_port TEXT;
-    " 2>/dev/null || error_exit "Falha ao configurar o banco de dados"
+    " > /dev/null 2>&1 || error_exit "Falha ao configurar o banco de dados"
     increment_step
 
 
