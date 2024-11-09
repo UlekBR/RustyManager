@@ -212,10 +212,10 @@ else
     show_progress "Instalando OpenVPN..."
     case $OS_NAME in
         ubuntu|debian)
-            apt-get install -y openvpn iptables openssl ca-certificates zip -y > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
+            apt-get install -y openvpn iptables openssl ca-certificates zip tar -y > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
             ;;
         almalinux|rocky)
-            dnf install -y openvpn iptables openssl ca-certificates zip > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
+            dnf install -y openvpn iptables openssl ca-certificates zip tar > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
             ;;
     esac
     if [ ! -d "/etc/openvpn/easy-rsa" ]; then
