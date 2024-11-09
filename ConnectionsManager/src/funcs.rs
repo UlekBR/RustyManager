@@ -549,7 +549,7 @@ pub fn del_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
 }
 
 pub fn del_openvpn_port_in_db(sqlite_conn: &Connection) -> Result<(), rusqlite::Error> {
-    sqlite_conn.execute("UPDATE connections SET openvpn_ports = '' WHERE id = 1", [])?;
+    sqlite_conn.execute("UPDATE connections SET openvpn_port = '' WHERE id = 1", [])?;
     Ok(())
 }
 
