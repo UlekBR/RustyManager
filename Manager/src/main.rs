@@ -1,7 +1,7 @@
 mod funcs;
 mod text_funcs;
 
-use std::{env, io, thread};
+use std::{env, fs, io, thread};
 use std::io::BufRead;
 use std::process::Command;
 use std::time::Duration;
@@ -230,17 +230,33 @@ fn user_exists() {
     io::stdin().read_line(&mut return_string).expect("");
 }
 
+fn get_os_info() -> (String, String) {
+    let os_info = fs::read_to_string("/etc/os-release").expect("Failed to read /etc/os-release");
+
+    let mut os_name = String::new();
+    let mut os_version = String::new();
+
+    for line in os_info.lines() {
+        if line.starts_with("ID=") {
+            os_name = line.trim_start_matches("ID=").trim_matches('"').to_string();
+        } else if line.starts_with("VERSION_ID=") {
+            os_version = line.trim_start_matches("VERSION_ID=").trim_matches('"').to_string();
+        }
+    }
+
+    (os_name, os_version)
+}
+
 
 fn main_menu(sqlite_conn: &Connection) {
     loop {
         
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("Calculando uso de cpu e ram..."));
-        let os = run_command_and_get_output("lsb_release -is | tr -d '\"'");
-        let version = run_command_and_get_output(" lsb_release -rs | tr -d '\"'");
+        let (os, version) = get_os_info();
         let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
         let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
-        let cpu_usage = run_command_and_get_output("mpstat 1 1 | awk '/Average/ {print 100 - $NF\"%\"}'");
+        let cpu_usage = run_command_and_get_output("vmstat 1 2 | tail -n 1 | awk '{print 100 - $15 \"%\"}'");
         let cpu_cores = run_command_and_get_output("nproc");
         let ram_total = run_command_and_get_output("free -m | awk 'NR==2{print $2 \" MB\"}'");
         let ram_usage = run_command_and_get_output("free -m | awk 'NR==2{printf \"%.2f%%\\n\", $3*100/$2}'");
