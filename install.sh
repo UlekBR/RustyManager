@@ -98,6 +98,7 @@ else
 
     # ---->>>> Criando as colunas no banco de dados
     show_progress "Configurando o banco de dados..."
+
     sqlite3 /opt/rustymanager/db "
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
@@ -107,16 +108,20 @@ else
         login_limit TEXT NOT NULL,
         login_expiry TEXT NOT NULL
     );
+
     CREATE TABLE IF NOT EXISTS connections (
-        id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY
     );
+
+    -- Tentativa de adicionar as colunas; erros de duplicação serão ignorados
     ALTER TABLE connections ADD COLUMN proxy_ports TEXT;
     ALTER TABLE connections ADD COLUMN stunnel_ports TEXT;
     ALTER TABLE connections ADD COLUMN badvpn_ports TEXT;
     ALTER TABLE connections ADD COLUMN checkuser_ports TEXT;
     ALTER TABLE connections ADD COLUMN openvpn_port TEXT;
-    " || error_exit "Falha ao configurar o banco de dados"
+    " 2>/dev/null || error_exit "Falha ao configurar o banco de dados"
     increment_step
+
 
     # ---->>>> Instalar rust
     show_progress "Instalando Rust..."
