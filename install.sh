@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=13
+TOTAL_STEPS=14
 CURRENT_STEP=0
 
 show_progress() {
