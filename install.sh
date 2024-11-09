@@ -235,7 +235,8 @@ else
     fi
 
 
-        echo "port none
+    plugin_path=$(find /usr -type f -name 'openvpn-plugin-auth-pam.so')
+ echo "port none
 proto none
 dev tun
 sndbuf 0
@@ -265,8 +266,8 @@ management localhost 7505
 client-to-client
 client-cert-not-required
 username-as-common-name
-plugin \$(find /usr -type f -name 'openvpn-plugin-auth-pam.so') login
-duplicate-cn" > /etc/openvpn/server.conf  > /dev/null 2>&1 || error_exit "Falha ao criar openvpn server.conf"
+plugin $plugin_path login
+duplicate-cn" > /etc/openvpn/server.conf || error_exit "Falha ao criar openvpn server.conf"
 
     # Iniciar e habilitar o serviço OpenVPN
     echo 1 > /proc/sys/net/ipv4/ip_forward > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
