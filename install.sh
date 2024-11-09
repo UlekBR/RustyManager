@@ -139,12 +139,6 @@ else
     mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
     increment_step
 
-    # ---->>>> Baixando arquivos para o ssl
-    show_progress "Baixando arquivos para ssl..."
-    wget -O /opt/rustymanager/ssl/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/ssl/cert.pem > /dev/null 2>&1 || error_exit "Falha ao baixar cert.pem"
-    wget -O /opt/rustymanager/ssl/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/ssl/key.pem > /dev/null 2>&1 || error_exit "Falha ao baixar key.pem"
-    increment_step
-
     # ---->>>> Compilar BadVPN
     show_progress "Compilando BadVPN..."
     mkdir -p /root/RustyManager/BadVpn/badvpn/badvpn-build
@@ -187,6 +181,24 @@ else
             ;;
     esac
     increment_step
+
+    # ---->>>> Instalando STunnel
+    show_progress "Instalando STunnel..."
+    case $OS_NAME in
+        ubuntu|debian)
+            apt-get install stunnel4 -y > /dev/null 2>&1 || error_exit "Falha ao instalar o htop"
+            ;;
+        almalinux|rocky)
+            dnf install stunnel -y > /dev/null 2>&1 || error_exit "Falha ao instalar o htop"
+            ;;
+    esac
+    curl -sf -o /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem || error_exit "Falha ao baixar cert.pem"
+    curl -sf -o /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem || error_exit "Falha ao baixar key.pem"
+    curl -sf -o /etc/stunnel/stunnel.conf https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/conf || error_exit "Falha ao baixar config"
+    systemctl stop stunnel4 > /dev/null 2>&1
+    systemctl disable stunnel4 > /dev/null 2>&1
+    increment_step
+
 
     # ---->>>> Limpeza
     show_progress "Limpando diretórios temporários..."
