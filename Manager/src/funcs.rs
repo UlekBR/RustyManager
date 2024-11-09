@@ -261,7 +261,7 @@ pub struct OpenVpn {
 
 
 pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare("SELECT proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, badvpn_port FROM connections LIMIT 1")?;
+    let mut stmt = conn.prepare("SELECT proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
 
     let connection: Option<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> = stmt.query_row([], |row| {
         Ok((
