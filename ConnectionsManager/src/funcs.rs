@@ -269,7 +269,7 @@ pub fn del_checkuser_port(port: usize) -> std::result::Result<(), io::Error> {
 
 pub fn enable_openvpn(port: usize, mode: String) -> std::result::Result<(), io::Error> {
     let commands = [
-        format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port.to_string()),
+        format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port),
         format!("sed -i 's/^proto [^ ]\\+/proto {}/g' /etc/openvpn/server.conf", mode),
         "systemctl start openvpn".to_string(),
     ];
