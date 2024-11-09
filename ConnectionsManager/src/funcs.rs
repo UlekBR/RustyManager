@@ -322,6 +322,7 @@ float
 pub fn disable_openvpn() -> std::result::Result<(), io::Error> {
     let commands = [
         "sed -i 's/^port [^ ]\\+/port none/g' /etc/openvpn/server.conf".to_string(),
+        "sed -i 's/^proto [^ ]\\+/proto none/g' /etc/openvpn/server.conf".to_string(),
         "systemctl stop openvpn".to_string(),
         "rm -f /root/client.ovpn".to_string()
     ];
