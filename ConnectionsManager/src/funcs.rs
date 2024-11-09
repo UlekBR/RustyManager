@@ -11,6 +11,7 @@ pub struct Connections {
     pub(crate) stunnel: Stunnel,
     pub(crate) badvpn: BadVpn,
     pub(crate) checkuser: CheckUser,
+    pub(crate) openvpn: OpenVpn,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -32,6 +33,12 @@ pub struct BadVpn {
 pub struct CheckUser {
     pub(crate) ports: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenVpn {
+    pub(crate) port: Option<String>,
+}
+
 
 pub fn is_port_available(port: usize) -> Result<bool, bool> {
     match TcpListener::bind(format!("0.0.0.0:{}", port)) {
@@ -129,7 +136,7 @@ pub fn add_stunnel_port(port: usize, ipv6: bool) -> std::result::Result<(), io::
     let stunnel_name = get_stunnel_service();
     let commands = [
         format!("grep -qE '^(::|0\\.0\\.0\\.0:)?{port_str}$' /etc/stunnel/stunnel.conf || echo '\naccept = {prefix}{port_str}' >> /etc/stunnel/stunnel.conf"),
-        format!("sudo systemctl is-active --quiet {} && sudo systemctl restart {} || sudo systemctl start {}", stunnel_name, stunnel_name, stunnel_name),
+        format!("systemctl is-active --quiet {} && systemctl restart {} || systemctl start {}", stunnel_name, stunnel_name, stunnel_name),
     ];
     for command in commands {
         run_command(command);
@@ -141,13 +148,14 @@ pub fn del_stunnel_port(port: usize) -> std::result::Result<(), io::Error> {
     let stunnel_name = get_stunnel_service();
     let commands = [
         format!("sed -i '/{port_str}/d' /etc/stunnel/stunnel.conf"),
-        format!("grep -q 'accept' /etc/stunnel/stunnel.conf  && sudo systemctl restart {} || sudo systemctl stop {}", stunnel_name, stunnel_name)
+        format!("grep -q 'accept' /etc/stunnel/stunnel.conf  && systemctl restart {} || systemctl stop {}", stunnel_name, stunnel_name)
     ];
     for command in commands {
         run_command(command);
     }
     Ok(())
 }
+
 pub fn add_badvpn_port(port: usize) -> std::result::Result<(), io::Error> {
     let service_file_content = format!(r#"
 [Unit]
@@ -259,6 +267,28 @@ pub fn del_checkuser_port(port: usize) -> std::result::Result<(), io::Error> {
     Ok(())
 }
 
+pub fn enable_openvpn(port: usize) -> std::result::Result<(), io::Error> {
+    let port_str = port.to_string();
+    let commands = [
+        format!("sed -i 's/^port [^ ]\\+/port {}/g' /etc/openvpn/server.conf", port_str),
+        "systemctl start openvpn".to_string(),
+    ];
+    for command in commands {
+        run_command(command);
+    }
+    Ok(())
+}
+pub fn disable_openvpn() -> std::result::Result<(), io::Error> {
+    let commands = [
+        "sed -i 's/^port [^ ]\\+/port none/g' /etc/openvpn/server.conf".to_string(),
+        "systemctl stop openvpn".to_string()
+    ];
+    for command in commands {
+        run_command(command);
+    }
+    Ok(())
+}
+
 pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
     let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
@@ -275,6 +305,9 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
             checkuser: CheckUser {
                 ports: row.get::<_, String>(4).ok(),
             },
+            openvpn: OpenVpn {
+                port: row.get::<_, String>(5).ok(),
+            },
         })
     })?.collect::<Result<_, _>>()?;
 
@@ -290,7 +323,7 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (?, NULL, NULL, NULL)",
+                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (?, NULL, NULL, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -314,6 +347,9 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
             checkuser: CheckUser {
                 ports: row.get::<_, String>(4).ok(),
             },
+            openvpn: OpenVpn {
+                port: row.get::<_, String>(5).ok(),
+            },
         })
     })?.collect::<Result<_, _>>()?;
 
@@ -329,7 +365,7 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, ?, NULL, NULL)",
+                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, ?, NULL, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -354,6 +390,9 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
             checkuser: CheckUser {
                 ports: row.get::<_, String>(4).ok(),
             },
+            openvpn: OpenVpn {
+                port: row.get::<_, String>(5).ok(),
+            },
         })
     })?.collect::<Result<_, _>>()?;
 
@@ -369,7 +408,7 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, NULL, ?, NULL)",
+                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, ?, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -393,6 +432,9 @@ pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
             checkuser: CheckUser {
                 ports: row.get::<_, String>(4).ok(),
             },
+            openvpn: OpenVpn {
+                port: row.get::<_, String>(5).ok(),
+            },
         })
     })?.collect::<Result<_, _>>()?;
 
@@ -408,13 +450,35 @@ pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, NULL, NULL, ?)",
+                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, ?, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
         }
     }
 }
+
+pub fn add_openvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
+    let port_str = port.to_string();
+    let exists = sqlite_conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM connections LIMIT 1)",
+        [],
+        |row| row.get::<_, bool>(0),
+    )?;
+    if exists {
+        sqlite_conn.execute(
+            "UPDATE connections SET openvpn_port = ? WHERE id = 1",
+            params![port_str],
+        )?;
+    } else {
+        sqlite_conn.execute(
+            "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, NULL, ?)",
+            params![port_str],
+        )?;
+    }
+    Ok(())
+}
+
 
 pub fn del_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
     let mut stmt = sqlite_conn.prepare("SELECT proxy_ports FROM connections LIMIT 1")?;
@@ -482,6 +546,11 @@ pub fn del_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
     } else {
         Err(rusqlite::Error::UnwindingPanic)
     }
+}
+
+pub fn del_openvpn_port_in_db(sqlite_conn: &Connection) -> Result<(), rusqlite::Error> {
+    sqlite_conn.execute("UPDATE connections SET openvpn_ports = '' WHERE id = 1", [])?;
+    Ok(())
 }
 
 fn run_command(command: String) -> &'static str {

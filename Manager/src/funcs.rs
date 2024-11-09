@@ -230,6 +230,7 @@ pub struct Connections {
     pub(crate) stunnel: Stunnel,
     pub(crate) badvpn: BadVpn,
     pub(crate) checkuser: CheckUser,
+    pub(crate) openvpn: OpenVpn,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -252,24 +253,28 @@ pub struct CheckUser {
     pub(crate) ports: Option<Vec<u16>>,
 }
 
-
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenVpn {
+    pub(crate) port: Option<String>,
+}
 
 
 
 pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare("SELECT proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports FROM connections LIMIT 1")?;
+    let mut stmt = conn.prepare("SELECT proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, badvpn_port FROM connections LIMIT 1")?;
 
-    let connection: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> = stmt.query_row([], |row| {
+    let connection: Option<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> = stmt.query_row([], |row| {
         Ok((
             row.get(0).ok(),
             row.get(1).ok(),
             row.get(2).ok(),
             row.get(3).ok(),
+            row.get(4).ok(),
         ))
     }).optional().unwrap();
 
     match connection {
-        Some((proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports)) => {
+        Some((proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port)) => {
             Ok(Connections {
                 proxy: RustyProxy {
                     ports: Option::from(proxy_ports.map(|ports| {
@@ -290,6 +295,9 @@ pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::er
                     ports: Option::from(checkuser_ports.map(|ports| {
                         ports.split('|').filter_map(|p| p.parse::<u16>().ok()).collect()
                     }).unwrap_or_else(|| Vec::new())),
+                },
+                openvpn: OpenVpn {
+                    port: Option::from(openvpn_port),
                 }
             })
         },
@@ -305,6 +313,9 @@ pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::er
             },
             checkuser: CheckUser {
                 ports: Some(Vec::new()),
+            },
+            openvpn: OpenVpn {
+                port: Some(String::new()),
             },
         })
     }
@@ -420,6 +431,14 @@ pub fn enable_checkuser_port(port: String) {
 
 pub fn disable_checkuser_port(port: String) {
     run_command(format!("/opt/rustymanager/connectionsmanager --conn checkuser --disable-port {}", port));
+}
+
+pub fn enable_openvpn(port: String) {
+    run_command(format!("/opt/rustymanager/connectionsmanager --conn openvpn --enable {}", port));
+}
+
+pub fn disable_openvpn() {
+    run_command("/opt/rustymanager/connectionsmanager --conn openvpn --disable".to_string());
 }
 
 pub fn journald_status() -> bool {

@@ -8,7 +8,7 @@ use std::time::Duration;
 use chrono::DateTime;
 use rusqlite::Connection;
 use crate::text_funcs::{text_to_bold};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_proxy_ssl_port};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_openvpn, disable_openvpn};
 
 fn main() {
     let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
@@ -749,6 +749,7 @@ fn connection_menu(sqlite_conn: &Connection) {
         println!("| 2 - {:<40} |", "RustyProxy (ws/wss/socks)");
         println!("| 3 - {:<40} |", "Stunnel");
         println!("| 4 - {:<40} |", "Badvpn");
+        println!("| 5 - {:<40} |", "OpenVpn");
         println!("| 0 - {:<40} |", "Voltar ao menu");
         println!("------------------------------------------------");
         let mut option = String::new();
@@ -769,6 +770,9 @@ fn connection_menu(sqlite_conn: &Connection) {
                     }
                     4 => {
                         badvpn_menu(&sqlite_conn)
+                    }
+                    5 => {
+                        openvpn_menu(&sqlite_conn)
                     }
                     0 => {
                         break
@@ -1335,6 +1339,90 @@ fn checkuser_menu(sqlite_conn: &Connection) {
         }
     }
 }
+
+fn openvpn_menu(sqlite_conn: &Connection) {
+    loop {
+        Command::new("clear").status().unwrap();
+
+        println!("------------------------------------------------");
+        println!("|                    {}                   |", text_to_bold("OPENVPN"));
+        println!("------------------------------------------------");
+        let conn = get_connections(&sqlite_conn).unwrap();
+        let openvpn_port = conn.openvpn.port.unwrap_or_default();
+        if openvpn_port.is_empty() {
+            println!("| Porta: {:<38}|", "nenhuma");
+            println!("| 1 - {:<40} |", "Ativar OpenVPN");
+        } else {
+            println!("| Porta: {:<38}|", openvpn_port);
+            println!("| 1 - {:<40} |", "Desativar OpenVPN");
+        }
+        println!("| 0 - {:<40} |", "Voltar ao menu");
+        println!("------------------------------------------------");
+        let mut option = String::new();
+        println!("\n --> Selecione uma opção:");
+        io::stdin().read_line(&mut option).unwrap();
+        match option.trim().parse() {
+            Ok(op) => {
+                match op {
+                    1 => {
+                        if openvpn_port.is_empty() {
+                            let mut port = String::new();
+                            loop {
+                                println!("Digite a porta: ");
+                                if !port.is_empty() {
+                                    port = String::new();
+                                };
+                                io::stdin().read_line(&mut port).unwrap();
+                                port = port.trim().to_string();
+                                match port.parse::<usize>() {
+                                    Ok(port) => {
+                                        if !is_port_avaliable(port).unwrap() {
+                                            println!("essa porta já está em uso, digite outra:")
+                                        } else {
+                                            break
+                                        }
+                                    }
+                                    Err(..) => {
+                                        println!("digite uma porta valida");
+                                    }
+                                }
+
+                            }
+
+                            enable_openvpn(port);
+
+                            Command::new("clear").status().unwrap();
+                            println!("\n> OpenVPN ativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                            let mut return_string = String::new();
+                            io::stdin().read_line(&mut return_string).expect("");
+
+                        } else {
+                            disable_openvpn();
+                            Command::new("clear").status().unwrap();
+                            println!("\n> OpenVPN desativado com sucesso, pressione qualquer tecla para voltar ao menu");
+                            let mut return_string = String::new();
+                            io::stdin().read_line(&mut return_string).expect("");
+                        }
+
+                    }
+                    0 => {
+                        break
+                    }
+                    _ => {
+                        continue
+                    }
+                }
+            }
+            _ => {
+                Command::new("clear").status().unwrap();
+                println!("\n> Opção invalida, pressione qualquer tecla para voltar ao menu");
+                let mut return_string = String::new();
+                io::stdin().read_line(&mut return_string).expect("");
+            }
+        }
+    }
+}
+
 fn journald_menu() {
     loop {
         Command::new("clear").status().unwrap();

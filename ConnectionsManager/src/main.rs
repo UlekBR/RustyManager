@@ -1,6 +1,6 @@
 use std::env;
 use rusqlite::{Connection, Result};
-use crate::funcs::{add_badvpn_port, add_badvpn_port_in_db, add_checkuser_port, add_checkuser_port_in_db, add_proxy_port, add_proxy_port_in_db, add_stunnel_port, add_stunnel_port_in_db, del_badvpn_port, del_badvpn_port_in_db, del_checkuser_port, del_checkuser_port_in_db, del_proxy_port, del_proxy_port_in_db, del_stunnel_port, del_stunnel_port_in_db, is_port_available};
+use crate::funcs::{add_badvpn_port, add_badvpn_port_in_db, add_checkuser_port, add_checkuser_port_in_db, add_openvpn_port_in_db, add_proxy_port, add_proxy_port_in_db, add_stunnel_port, add_stunnel_port_in_db, del_badvpn_port, del_badvpn_port_in_db, del_checkuser_port, del_checkuser_port_in_db, del_openvpn_port_in_db, del_proxy_port, del_proxy_port_in_db, del_stunnel_port, del_stunnel_port_in_db, disable_openvpn, enable_openvpn, is_port_available};
 
 mod funcs;
 
@@ -137,6 +137,44 @@ fn main() -> Result<()> {
                         }
                     }
                 },
+                "openvpn" => {
+                    let action_arg = args.get(3).unwrap();
+                    match action_arg.as_str() {
+                        "--enable" => {
+                            if let Some(port_str) = args.get(4) {
+                                match port_str.parse::<usize>() {
+                                    Ok(port) => {
+                                        if is_port_available(port).expect("error on check port use") {
+                                            enable_openvpn(port).expect("error on enable port");
+                                            add_openvpn_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
+                                        }
+                                    }
+                                    Err(_) => {
+                                        println!("invalid port");
+                                    }
+                                }
+                            }
+                        }
+                        "--disable" => {
+                            if let Some(port_str) = args.get(4) {
+                                match port_str.parse::<usize>() {
+                                    Ok(port) => {
+                                        if !is_port_available(port).expect("error on check port use") {
+                                            disable_openvpn().expect("error on disable port");
+                                            del_openvpn_port_in_db(&sqlite_conn).expect("error on delete port in db");
+                                        }
+                                    }
+                                    Err(_) => {
+                                        println!("invalid port");
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            println!("specify a valid action [--enable, --disable]");
+                        }
+                    }
+                },
                 "checkuser" => {
                     let action_arg = args.get(3).unwrap();
                     match action_arg.as_str() {
@@ -185,7 +223,9 @@ fn main() -> Result<()> {
     } else {
         let text = "\
         Options:\n
-         --conn [proxy, stunnel, badvpn, checkuser]\n
+         --conn [proxy, stunnel, badvpn, checkuser, openvpn]\n\
+         --enable port (only for openvpn)\n
+         --disable (only for openvpn)\n
          --enable-port port\n
          --disable-port port\n
          --status connections_status (only for proxy)\n
