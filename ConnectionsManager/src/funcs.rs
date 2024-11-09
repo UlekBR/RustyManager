@@ -97,7 +97,7 @@ pub fn del_proxy_port(port: usize) -> Result<(), io::Error> {
     for command in commands {
         run_command(command);
     }
-    fs::remove_file(format!("/etc/systemd/system/rustyproxy{}.service", port)).unwrap();
+    fs::remove_file(format!("/etc/systemd/system/rustyproxy{}.service", port))?;
     Ok(())
 }
 
@@ -156,9 +156,9 @@ WantedBy=multi-user.target
         .write(true)
         .create(true)
         .truncate(true)
-        .open(service_file_path).unwrap();
+        .open(service_file_path)?;
 
-    file.write_all(service_file_content.as_bytes()).unwrap();
+    file.write_all(service_file_content.as_bytes())?;
 
     let commands = [
         "systemctl daemon-reload".to_string(),
@@ -178,7 +178,7 @@ pub fn del_badvpn_port(port: usize) -> std::result::Result<(), io::Error> {
     for command in commands {
         run_command(command);
     }
-    fs::remove_file(format!("/etc/systemd/system/badvpn{}.service", port)).unwrap();
+    fs::remove_file(format!("/etc/systemd/system/badvpn{}.service", port))?;
     Ok(())
 }
 pub fn add_checkuser_port(port: usize) -> std::result::Result<(), io::Error> {
@@ -211,9 +211,9 @@ WantedBy=multi-user.target
         .write(true)
         .create(true)
         .truncate(true)
-        .open(service_file_path).unwrap();
+        .open(service_file_path)?;
 
-    file.write_all(service_file_content.as_bytes()).unwrap();
+    file.write_all(service_file_content.as_bytes())?;
 
     let commands = [
         "systemctl daemon-reload".to_string(),
@@ -233,12 +233,12 @@ pub fn del_checkuser_port(port: usize) -> std::result::Result<(), io::Error> {
     for command in commands {
         run_command(command);
     }
-    fs::remove_file(format!("/etc/systemd/system/checkuser{}.service", port)).unwrap();
+    fs::remove_file(format!("/etc/systemd/system/checkuser{}.service", port))?;
     Ok(())
 }
 
 pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1").unwrap();
+    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
@@ -254,7 +254,7 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
                 ports: row.get::<_, String>(4).ok(),
             },
         })
-    }).unwrap().collect::<Result<_, _>>().unwrap();
+    })?.collect::<Result<_, _>>()?;
 
     match connections.first() {
         Some(conn) => {
@@ -263,21 +263,21 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
                 ports.push('|');
             }
             ports.push_str(&port.to_string());
-            sqlite_conn.execute("UPDATE connections SET proxy_ports = ? WHERE id = 1", params![ports]).unwrap();
+            sqlite_conn.execute("UPDATE connections SET proxy_ports = ? WHERE id = 1", params![ports])?;
             Ok(())
         },
         None => {
             sqlite_conn.execute(
                 "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (?, NULL, NULL, NULL)",
                 params![port.to_string()]
-            ).unwrap();
+            )?;
             Ok(())
         }
     }
 }
 
 pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1").unwrap();
+    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
@@ -293,7 +293,7 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
                 ports: row.get::<_, String>(4).ok(),
             },
         })
-    }).unwrap().collect::<Result<_, _>>().unwrap();
+    })?.collect::<Result<_, _>>()?;
 
     match connections.first() {
         Some(conn) => {
@@ -302,14 +302,14 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
                 ports.push('|');
             }
             ports.push_str(&port.to_string());
-            sqlite_conn.execute("UPDATE connections SET stunnel_ports = ? WHERE id = 1", params![ports]).unwrap();
+            sqlite_conn.execute("UPDATE connections SET stunnel_ports = ? WHERE id = 1", params![ports])?;
             Ok(())
         },
         None => {
             sqlite_conn.execute(
                 "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, ?, NULL, NULL)",
                 params![port.to_string()]
-            ).unwrap();
+            )?;
             Ok(())
         }
     }
@@ -317,7 +317,7 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
 
 
 pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1").unwrap();
+    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
@@ -333,7 +333,7 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
                 ports: row.get::<_, String>(4).ok(),
             },
         })
-    }).unwrap().collect::<Result<_, _>>().unwrap();
+    })?.collect::<Result<_, _>>()?;
 
     match connections.first() {
         Some(conn) => {
@@ -342,21 +342,21 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
                 ports.push('|');
             }
             ports.push_str(&port.to_string());
-            sqlite_conn.execute("UPDATE connections SET badvpn_ports = ? WHERE id = 1", params![ports]).unwrap();
+            sqlite_conn.execute("UPDATE connections SET badvpn_ports = ? WHERE id = 1", params![ports])?;
             Ok(())
         },
         None => {
             sqlite_conn.execute(
                 "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, NULL, ?, NULL)",
                 params![port.to_string()]
-            ).unwrap();
+            )?;
             Ok(())
         }
     }
 }
 
 pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1").unwrap();
+    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
@@ -372,7 +372,7 @@ pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
                 ports: row.get::<_, String>(4).ok(),
             },
         })
-    }).unwrap().collect::<Result<_, _>>().unwrap();
+    })?.collect::<Result<_, _>>()?;
 
     match connections.first() {
         Some(conn) => {
@@ -381,14 +381,14 @@ pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
                 ports.push('|');
             }
             ports.push_str(&port.to_string());
-            sqlite_conn.execute("UPDATE connections SET checkuser_ports = ? WHERE id = 1", params![ports]).unwrap();
+            sqlite_conn.execute("UPDATE connections SET checkuser_ports = ? WHERE id = 1", params![ports])?;
             Ok(())
         },
         None => {
             sqlite_conn.execute(
                 "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports) VALUES (NULL, NULL, NULL, ?)",
                 params![port.to_string()]
-            ).unwrap();
+            )?;
             Ok(())
         }
     }
