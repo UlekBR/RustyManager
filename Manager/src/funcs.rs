@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
+use std::io;
 use std::io::Read;
 use std::net::{TcpListener};
 use chrono::{DateTime, Duration, Local, Utc};
@@ -612,7 +613,7 @@ pub fn make_backup(conn: &Connection) -> String {
         .open("/root/backup.json")
         .unwrap();
 
-    writeln!(file, "{}", json).unwrap();
+    io::Write::write_all(&mut file, json.as_ref()).expect("error on write backup in file");
     "backup done in /root/backup.json".to_string()
 }
 
