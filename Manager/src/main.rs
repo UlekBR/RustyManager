@@ -914,13 +914,13 @@ fn utils_menu(sqlite_conn: &Connection) {
                         backup_path = backup_path.trim().to_string();
 
                         if Path::new(&backup_path).exists() {
-                            println!("arquivo encontrado, restaurando backup...");
+                            println!("arquivo encontrado, restaurando backup...\n");
                             let restore = restore_backup(&sqlite_conn, backup_path.to_string());
                             if restore == "backup restored" {
-                                println!("backup restaurado com sucesso");
+                                println!("\nbackup restaurado com sucesso");
                             }
                         } else {
-                            println!("o arquivo não foi encontrado no caminho digitado");
+                            println!("\no arquivo não foi encontrado no caminho digitado");
                         }
                         println!("> pressione qualquer tecla para voltar ao menu");
                         let mut return_string = String::new();
