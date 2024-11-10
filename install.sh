@@ -24,7 +24,7 @@ else
     clear
     show_progress "Atualizando repositorios..."
     export DEBIAN_FRONTEND=noninteractive
-    SCRIPT_VERSION="beta"
+    SCRIPT_VERSION="main"
     increment_step
 
     # ---->>>> Verificação do sistema
