@@ -254,7 +254,7 @@ fn main_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("Calculando uso de cpu e ram..."));
         let (os, version) = get_os_info();
-        let ssh_online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
+        let ssh_online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\" && user != \"sshd\") print user}' | wc -l");
         let ovpn_online = run_command_and_get_output("sed -n '/Common Name/,/ROUTING TABLE/{/Common Name/d;/ROUTING TABLE/q;s/,.*//p}' /etc/openvpn/openvpn-status.log 2>/dev/null | wc -l || echo 0");
         let online = ssh_online.parse::<usize>().unwrap() + ovpn_online.parse::<usize>().unwrap();
 

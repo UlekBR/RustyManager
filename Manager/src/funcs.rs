@@ -342,7 +342,7 @@ pub fn online_report(conn: &Connection) -> Vec<OnlineUser> {
     let mut user_connections: HashMap<&str, usize> = HashMap::new();
     for line in connections.lines() {
         let user = line.split_whitespace().next().unwrap_or("");
-        if user != "root" && !user.is_empty() {
+        if user != "root" && user != "sshd" && !user.is_empty() {
             *user_connections.entry(user).or_insert(0) += 1;
         }
     }
@@ -390,14 +390,6 @@ pub fn enable_proxy_port(port: String, status: String) {
         run_command(format!("/opt/rustymanager/connectionsmanager --conn proxy --enable-port {}", port));
     } else {
         run_command(format!("/opt/rustymanager/connectionsmanager --conn proxy --enable-port {} --status {}", port, status));
-    }
-}
-
-pub fn enable_proxy_ssl_port(port: String, status: String) {
-    if status.is_empty() {
-        run_command(format!("/opt/rustymanager/connectionsmanager --conn proxyssl --enable-port {}", port));
-    } else {
-        run_command(format!("/opt/rustymanager/connectionsmanager --conn proxyssl --enable-port {} --status {}", port, status));
     }
 }
 
