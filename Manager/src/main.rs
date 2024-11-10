@@ -256,7 +256,7 @@ fn main_menu(sqlite_conn: &Connection) {
         let (os, version) = get_os_info();
         let ssh_online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
         let ovpn_online = run_command_and_get_output("sed -n '/Common Name/,/ROUTING TABLE/{/Common Name/d;/ROUTING TABLE/q;s/,.*//p}' /etc/openvpn/openvpn-status.log 2>/dev/null | wc -l || echo 0");
-        let online: usize = ssh_online.parse().unwrap() + ovpn_online.parse().unwrap();
+        let online = ssh_online.parse::<usize>().unwrap() + ovpn_online.parse::<usize>().unwrap();
 
         let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
         let cpu_usage = run_command_and_get_output("vmstat 1 2 | tail -n 1 | awk '{print 100 - $15 \"%\"}'");
