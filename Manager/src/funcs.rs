@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::fs::{File, OpenOptions};
+use std::io::Read;
 use std::net::{TcpListener};
-use chrono::{DateTime, Duration, Local};
+use chrono::{DateTime, Duration, Local, Utc};
 use serde::{Deserialize, Serialize};
 use std::process::{Command};
 use rand::Rng;
@@ -601,6 +603,43 @@ pub fn run_command_and_get_output(command: &str) -> String {
     output.trim().to_string()
 }
 
+pub fn make_backup(conn: &Connection) -> String {
+    let json = users_report_json(conn);
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open("/root/backup.json")
+        .unwrap();
+
+    writeln!(file, "{}", json).unwrap();
+    "backup done in /root/backup.json".to_string()
+}
+
+pub fn restore_backup(conn: &Connection, path: String) -> String {
+    let mut file = File::create(path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let users: Vec<User> = serde_json::from_str(contents.as_str()).unwrap();
+    for user in users {
+        let create = create_user(user.user.as_str(), user.pass.as_str(), expire_date_to_days(user.expiry), user.limit.parse().unwrap(), false, conn);
+        match create.as_str() {
+            "created" => println!("created user: {}", user.user),
+            "user already exists" => println!("already exists: {}", user.user),
+            _ => {}
+        }
+    }
+    "backup restored".to_string()
+}
+
+
+fn expire_date_to_days(expiry: String) -> usize {
+    let dt = DateTime::parse_from_str(expiry.as_str(), "%+").expect("error on parse data");
+    let now = Utc::now();
+    let duration = dt.with_timezone(&Utc) - now;
+    let days_left = duration.num_days();
+    days_left as usize
+}
 
 fn days_to_expire_date(days: usize) -> String {
     let now: DateTime<Local> = Local::now();
@@ -613,3 +652,6 @@ fn minutes_to_expire_date(minutes: usize) -> String {
     let expiry_date = now + Duration::minutes(minutes as i64);
     expiry_date.to_string()
 }
+
+
+

@@ -3,12 +3,13 @@ mod text_funcs;
 
 use std::{env, fs, io, thread};
 use std::io::BufRead;
+use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 use chrono::DateTime;
 use rusqlite::Connection;
 use crate::text_funcs::{text_to_bold};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_openvpn, disable_openvpn};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_openvpn, disable_openvpn, restore_backup, make_backup};
 
 fn main() {
     let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
@@ -196,6 +197,29 @@ fn main() {
                     println!("not found")
                 }
             }
+            "--make-backup" => {
+                let make = make_backup(&sqlite_conn);
+                println!("{}", make);
+            }
+            "--restore-backup" => {
+                match args.len() {
+                    _i if 2 >= _i  => {
+                        println!("path empty");
+                        return;
+                    }
+                    _ => {}
+                }
+                let backup_path = &args[2];
+                if Path::new(&backup_path).exists() {
+                    let restore = restore_backup(&sqlite_conn, backup_path.to_string());
+                    if restore == "backup restored" {
+                        println!("{}", restore);
+                    }
+                } else {
+                    println!("file not found in path");
+                }
+
+            }
             "--help" => {
                 let mut text = " -- help data".to_owned();
                 text = text + "\n   --create-user <user> <pass> <days> <limit>";
@@ -207,6 +231,8 @@ fn main() {
                 text = text + "\n   --users-report";
                 text = text + "\n   --expired-report";
                 text = text + "\n   --online-report";
+                text = text + "\n   --make-backup";
+                text = text + "\n   --restore-backup <backup path>";
 
                 println!("{}", text)
             }
@@ -811,6 +837,8 @@ fn utils_menu(sqlite_conn: &Connection) {
         println!("| {:<45}|", "2 - Teste de Velocidade");
         println!("| {:<45}|", "3 - Monitorar recursos");
         println!("| {:<45}|", "4 - Gerenciar Journald");
+        println!("| {:<45}|", "5 - Criar backup");
+        println!("| {:<45}|", "6 - Restaurar backup");
         println!("| {:<45}|", "0 - Voltar ao menu");
         println!("------------------------------------------------");
         println!();
@@ -866,6 +894,38 @@ fn utils_menu(sqlite_conn: &Connection) {
                     }
                     4 => {
                         journald_menu();
+                    }
+                    5 => {
+                        Command::new("clear").status().unwrap();
+                        println!("{}", text_to_bold("gerando backup..."));
+                        let make = make_backup(&sqlite_conn);
+                        if make == "backup done in /root/backup.json" {
+                            println!("backup criado com sucesso, salvo em: /root/backup.json")
+                        }
+                        println!("> pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+                    6 => {
+                        Command::new("clear").status().unwrap();
+                        println!("Digite o caminho do arquivo:");
+                        let mut backup_path = String::new();
+                        io::stdin().read_line(&mut backup_path).expect("");
+                        backup_path = backup_path.trim().to_string();
+
+                        if Path::new(&backup_path).exists() {
+                            println!("arquivo encontrado, restaurando backup...");
+                            let restore = restore_backup(&sqlite_conn, backup_path.to_string());
+                            if restore == "backup restored" {
+                                println!("backup restaurado com sucesso");
+                            }
+                        } else {
+                            println!("o arquivo não foi encontrado no caminho digitado");
+                        }
+                        println!("> pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+
                     }
                     0 => {
                         break
