@@ -618,7 +618,7 @@ pub fn make_backup(conn: &Connection) -> String {
 }
 
 pub fn restore_backup(conn: &Connection, path: String) -> String {
-    let mut file = File::create(path).unwrap();
+    let mut file = File::open(path).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     let users: Vec<User> = serde_json::from_str(contents.as_str()).unwrap();
