@@ -81,11 +81,11 @@ else
     case $OS_NAME in
         ubuntu|debian)
             apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-            apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
         almalinux|rocky)
             dnf update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-            dnf install epel-release gnupg2 curl gcc g++ make git cmake sysstat net-tools sqlite sqlite-devel -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            dnf install epel-release gnupg2 curl gcc g++ make git cmake sysstat net-tools sqlite sqlite-devel zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
     esac
     increment_step
@@ -212,10 +212,10 @@ else
     show_progress "Instalando OpenVPN..."
     case $OS_NAME in
         ubuntu|debian)
-            apt-get install -y openvpn iptables openssl ca-certificates zip tar -y > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
+            apt-get install -y openvpn openssl -y > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
             ;;
         almalinux|rocky)
-            dnf install -y openvpn iptables openssl ca-certificates zip tar > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
+            dnf install -y openvpn openssl > /dev/null 2>&1 || error_exit "Falha ao instalar o openvpn"
             ;;
     esac
     if [ ! -d "/etc/openvpn/easy-rsa" ]; then

@@ -254,7 +254,10 @@ fn main_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
         println!("{}", text_to_bold("Calculando uso de cpu e ram..."));
         let (os, version) = get_os_info();
-        let online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
+        let ssh_online = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@' | awk '{user=$1; if (user != \"root\") print user}' | wc -l");
+        let ovpn_online = run_command_and_get_output("sed -n '/Common Name/,/ROUTING TABLE/{/Common Name/d;/ROUTING TABLE/q;s/,.*//p}' /etc/openvpn/openvpn-status.log 2>/dev/null | wc -l || echo 0");
+        let online: usize = ssh_online.parse().unwrap() + ovpn_online.parse().unwrap();
+
         let created = run_command_and_get_output("awk -F: '$3 >= 1000 { C++ } END { print C+0 }' /etc/passwd");
         let cpu_usage = run_command_and_get_output("vmstat 1 2 | tail -n 1 | awk '{print 100 - $15 \"%\"}'");
         let cpu_cores = run_command_and_get_output("nproc");

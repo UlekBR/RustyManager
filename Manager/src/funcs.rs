@@ -333,11 +333,13 @@ pub fn online_report_json(conn: &Connection) -> String {
     serde_json::to_string_pretty(&online_report(conn)).expect("Serialization failed")
 }
 pub fn online_report(conn: &Connection) -> Vec<OnlineUser> {
-    let output = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@'");
+    let ssh_users = run_command_and_get_output("ps -e -o user= -o cmd= | grep '[s]shd: ' | grep -v 'sshd: root@'");
+    let ovpn_users = run_command_and_get_output("sed -n '/Common Name/,/ROUTING TABLE/{/Common Name/d;/ROUTING TABLE/q;s/,.*//p}' /etc/openvpn/openvpn-status.log 2>/dev/null || true");
+    let users = format!("{}\n{}", ssh_users, ovpn_users);
 
     let mut online_users: Vec<OnlineUser> = Vec::new();
-    let connections = String::from_utf8_lossy(output.as_ref());
-    let mut user_connections: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let connections = String::from_utf8_lossy(users.as_ref());
+    let mut user_connections: HashMap<&str, usize> = HashMap::new();
     for line in connections.lines() {
         let user = line.split_whitespace().next().unwrap_or("");
         if user != "root" && !user.is_empty() {
