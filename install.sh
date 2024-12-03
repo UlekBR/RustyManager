@@ -80,7 +80,7 @@ else
     show_progress "Atualizando o sistema..."
     case $OS_NAME in
         ubuntu|debian)
-            apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
+            apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
             apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
         almalinux|rocky)
