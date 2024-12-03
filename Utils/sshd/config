@@ -1,0 +1,16 @@
+# RustyManager SSH CONFIG
+Port 22
+Protocol 2
+PermitRootLogin yes
+PasswordAuthentication yes
+PermitTunnel yes
+TCPKeepAlive yes
+UsePAM no
+Banner /etc/bannerssh
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Otimizações para conexões SSH
+MaxStartups 5000:10:5000
+MaxAuthTries 3
+Compression no
+UseDNS no
