@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::net::{TcpListener};
-use chrono::{DateTime, Duration, Local, Utc};
+use chrono::{DateTime, Duration, Local, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::process::{Command};
 use rand::Rng;
@@ -618,10 +618,101 @@ pub fn make_backup(conn: &Connection) -> String {
 }
 
 pub fn restore_backup(conn: &Connection, path: String) -> String {
-    let mut file = File::open(path).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let users: Vec<User> = serde_json::from_str(contents.as_str()).unwrap();
+    if path.ends_with(".vps") {
+        restore_backup_sshplus(conn, path)
+    } else if path.ends_with(".json") {
+        let mut file = File::open(path).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        let users: Vec<User> = serde_json::from_str(contents.as_str()).unwrap();
+        for user in users {
+            let create = create_user(user.user.as_str(), user.pass.as_str(), expire_date_to_days(user.expiry), user.limit.parse().unwrap(), false, conn);
+            match create.as_str() {
+                "created" => println!("created user: {}", user.user),
+                "user already exists" => println!("already exists: {}", user.user),
+                _ => {}
+            }
+        }
+        "backup restored".to_string()
+    } else {
+        "invalid file".to_string()
+    }
+}
+
+pub fn restore_backup_sshplus(conn: &Connection, path: String) -> String {
+    let commands = vec![
+        "mkdir /root/backup".to_string(),
+        format!("tar -xvf {} -C /root/backup", path),
+    ];
+    for command in commands {
+        run_command(command);
+    }
+
+    let db_file = File::open("/root/backup/root/usuarios.db").unwrap();
+    let db_reader = BufReader::new(db_file);
+    let db_lines = db_reader.lines();
+
+    let mut users: Vec<User> = Vec::new();
+    for line in db_lines {
+        let line = line.unwrap();
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        let user = parts[0].trim();
+        if users.iter().any(|u| u.user == user) {
+            continue
+        }
+        let mut limit = parts[1].trim();
+        match limit.parse::<i32>() {
+            Ok(_) => {},
+            Err(_) => {
+                limit = "1";
+            },
+        }
+
+        let mut pass_file = match File::open(format!("/root/backup/etc/SSHPlus/senha/{}", user)) {
+            Ok(file) => file,
+            Err(_) => {
+                continue;
+            },
+        };
+        let mut pass = String::new();
+        pass_file.read_to_string(&mut pass).unwrap();
+        pass = pass.trim().to_string();
+
+        let mut expiration_date = String::new();
+        let shadow_file = File::open("/root/backup/etc/shadow").unwrap();
+        let shadow_reader = BufReader::new(shadow_file);
+        let shadow_lines = shadow_reader.lines();
+        for shadow_line in shadow_lines {
+            let shadow_line = shadow_line.unwrap();
+            if shadow_line.starts_with(user) {
+                let parts: Vec<&str> = shadow_line.split(':').collect();
+                if parts.len() > 7 {
+                    let expiration_days = parts[7].parse::<i64>().unwrap_or(0);
+                    if expiration_days > 0 {
+
+                        let epoch_start = NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+                        let epoch_seconds = expiration_days * 86400;
+                        let expiration_datetime = epoch_start + Duration::seconds(epoch_seconds);
+
+                        expiration_date = Local.from_local_datetime(&expiration_datetime).unwrap().to_rfc3339();
+                    } else {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        users.push(User{
+            login_type: "user".to_string(),
+            user: user.to_string(),
+            pass: pass.to_string(),
+            limit: limit.to_string(),
+            expiry: expiration_date.to_string()
+        })
+    }
+
+    run_command("rm -rf /root/backup".to_string());
+
     for user in users {
         let create = create_user(user.user.as_str(), user.pass.as_str(), expire_date_to_days(user.expiry), user.limit.parse().unwrap(), false, conn);
         match create.as_str() {
@@ -635,11 +726,15 @@ pub fn restore_backup(conn: &Connection, path: String) -> String {
 
 
 fn expire_date_to_days(expiry: String) -> usize {
-    let dt = DateTime::parse_from_str(expiry.as_str(), "%+").expect("error on parse data");
-    let now = Utc::now();
-    let duration = dt.with_timezone(&Utc) - now;
-    let days_left = duration.num_days();
-    days_left as usize
+    let dt = DateTime::parse_from_str(expiry.as_str(), "%+");
+
+    if let Ok(dt) = dt {
+        let now = Utc::now();
+        let duration = dt.with_timezone(&Utc) - now;
+        duration.num_days() as usize
+    } else {
+        0usize
+    }
 }
 
 fn days_to_expire_date(days: usize) -> String {
