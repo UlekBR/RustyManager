@@ -1086,11 +1086,11 @@ fn sslproxy_menu(sqlite_conn: &Connection) {
         println!("|                  {}                 |", text_to_bold("RUSTY PROXY SSL"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
-        let proxy_ports = conn.sslproxy.ports.unwrap_or_default();
-        if proxy_ports.is_empty() {
+        let sslproxy_ports = conn.sslproxy.ports.unwrap_or_default();
+        if sslproxy_ports.is_empty() {
             println!("| Portas(s): {:<34}|", "nenhuma");
         } else {
-            let active_ports = proxy_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            let active_ports = sslproxy_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
             println!("| Portas(s): {:<34}|", active_ports);
         }
 
