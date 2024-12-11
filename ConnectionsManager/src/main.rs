@@ -1,6 +1,6 @@
 use std::env;
 use rusqlite::{Connection, Result};
-use crate::funcs::{add_badvpn_port, add_badvpn_port_in_db, add_checkuser_port, add_checkuser_port_in_db, add_openvpn_port_in_db, add_proxy_port, add_proxy_port_in_db, add_stunnel_port, add_stunnel_port_in_db, del_badvpn_port, del_badvpn_port_in_db, del_checkuser_port, del_checkuser_port_in_db, del_openvpn_port_in_db, del_proxy_port, del_proxy_port_in_db, del_stunnel_port, del_stunnel_port_in_db, disable_openvpn, enable_openvpn, is_port_available};
+use crate::funcs::{add_badvpn_port, add_badvpn_port_in_db, add_checkuser_port, add_checkuser_port_in_db, add_openvpn_port_in_db, add_proxy_port, add_proxy_port_in_db, add_ssl_proxy_port, add_sslproxy_port_in_db, add_stunnel_port, add_stunnel_port_in_db, del_badvpn_port, del_badvpn_port_in_db, del_checkuser_port, del_checkuser_port_in_db, del_openvpn_port_in_db, del_proxy_port, del_proxy_port_in_db, del_ssl_proxy_port, del_sslproxy_port_in_db, del_stunnel_port, del_stunnel_port_in_db, disable_openvpn, enable_openvpn, is_port_available};
 
 mod funcs;
 
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
                         }
                     }
                 },
-                "stunnel" => {
+                "sslproxy" => {
                     let action_arg = args.get(3).unwrap();
                     match action_arg.as_str() {
                         "--enable-port" => {
@@ -68,9 +68,10 @@ fn main() -> Result<()> {
                                 match port_str.parse::<usize>() {
                                     Ok(port) => {
                                         if is_port_available(port).expect("error on check port use") {
-                                            let ipv6 = args.get(6).map_or(false, |arg| arg == "true");
-                                            add_stunnel_port(port, ipv6).expect("error on enable port");
-                                            add_stunnel_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
+                                            let cert = args.get(6);
+                                            let key = args.get(8);
+                                            add_ssl_proxy_port(port, cert, key).expect("error on enable port");
+                                            add_sslproxy_port_in_db(&sqlite_conn, port as u16).expect("error on insert port in db");
                                         }
                                     }
                                     Err(_) => {
@@ -84,8 +85,8 @@ fn main() -> Result<()> {
                                 match port_str.parse::<usize>() {
                                     Ok(port) => {
                                         if !is_port_available(port).expect("error on check port use") {
-                                            del_stunnel_port(port).expect("error on disable port");
-                                            del_stunnel_port_in_db(&sqlite_conn, port as u16).expect("error on delete port in db");
+                                            del_ssl_proxy_port(port).expect("error on disable port");
+                                            del_sslproxy_port_in_db(&sqlite_conn, port as u16).expect("error on delete port in db");
                                         }
                                     }
                                     Err(_) => {
@@ -216,13 +217,14 @@ fn main() -> Result<()> {
     } else {
         let text = "\
         Options:\n
-         --conn [proxy, stunnel, badvpn, checkuser, openvpn]\n\
+         --conn [proxy, sslproxy, badvpn, checkuser, openvpn]\n\
          --enable port (only for openvpn)\n
          --disable (only for openvpn)\n
          --enable-port port\n
          --disable-port port\n
          --status connections_status (only for proxy)\n
-         --ipv6 true|false (only for stunnel)";
+         --cert path (only for stunnel)\n
+         --cert key (only for stunnel)";
         println!("{}", text);
     }
 

@@ -657,6 +657,9 @@ pub fn restore_backup_sshplus(conn: &Connection, path: String) -> String {
         let line = line.unwrap();
         let parts: Vec<&str> = line.split_whitespace().collect();
         let user = parts[0].trim();
+        if users.iter().any(|u| u.user == user) {
+            continue
+        }
         let mut limit = parts[1].trim();
         match limit.parse::<i32>() {
             Ok(_) => {},
@@ -723,11 +726,15 @@ pub fn restore_backup_sshplus(conn: &Connection, path: String) -> String {
 
 
 fn expire_date_to_days(expiry: String) -> usize {
-    let dt = DateTime::parse_from_str(expiry.as_str(), "%+").expect("error on parse data");
-    let now = Utc::now();
-    let duration = dt.with_timezone(&Utc) - now;
-    let days_left = duration.num_days();
-    days_left as usize
+    let dt = DateTime::parse_from_str(expiry.as_str(), "%+");
+
+    if let Ok(dt) = dt {
+        let now = Utc::now();
+        let duration = dt.with_timezone(&Utc) - now;
+        duration.num_days() as usize
+    } else {
+        0usize
+    }
 }
 
 fn days_to_expire_date(days: usize) -> String {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: RustyProxy,
-    pub(crate) stunnel: Stunnel,
+    pub(crate) sslproxy: RustyProxySSL,
     pub(crate) badvpn: BadVpn,
     pub(crate) checkuser: CheckUser,
     pub(crate) openvpn: OpenVpn,
@@ -16,6 +16,11 @@ pub struct Connections {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RustyProxy {
+    pub(crate) ports: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RustyProxySSL {
     pub(crate) ports: Option<String>,
 }
 
@@ -65,7 +70,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitMEMLOCK=infinity
 LimitSTACK=infinity
-LimitCORE=infinity
+LimitCORE=0
 LimitAS=infinity
 LimitRSS=infinity
 LimitCPU=infinity
@@ -110,51 +115,70 @@ pub fn del_proxy_port(port: usize) -> Result<(), io::Error> {
     Ok(())
 }
 
-fn get_stunnel_service() -> String {
-    let os_info = fs::read_to_string("/etc/os-release").expect("Failed to read /etc/os-release");
+pub fn add_ssl_proxy_port(port: usize, cert: Option<&String>, key: Option<&String>) -> Result<(), io::Error> {
 
-    let mut os_name = String::new();
-
-    for line in os_info.lines() {
-        if line.starts_with("ID=") {
-            os_name = line.trim_start_matches("ID=").trim_matches('"').to_string();
-        }
+    let mut command = format!("/opt/rustymanager/rustyproxy --proxy-port {}", port);
+    if cert.is_some() {
+        command = format!("{} --cert {}", command, cert.unwrap().to_string());
     }
-
-    if os_name == "ubuntu" || os_name == "debian" {
-        "stunnel4".to_string()
-    } else if os_name == "almalinux" || os_name == "rockylinux" {
-        "stunnel".to_string()
-    } else {
-        "null".to_string()
+    if key.is_some() {
+        command = format!("{} --key {}", command, key.unwrap().to_string());
     }
-}
+    let service_file_content = format!(r#"
+[Unit]
+Description=RustyProxySSL{}
+After=network.target
 
-pub fn add_stunnel_port(port: usize, ipv6: bool) -> std::result::Result<(), io::Error> {
-    let port_str = port.to_string();
-    let prefix = if ipv6 { ":::" } else { "0.0.0.0:" };
-    let stunnel_name = get_stunnel_service();
+[Service]
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitMEMLOCK=infinity
+LimitSTACK=infinity
+LimitCORE=0
+LimitAS=infinity
+LimitRSS=infinity
+LimitCPU=infinity
+LimitFSIZE=infinity
+Type=simple
+ExecStart={}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+"#, port, command);
+
+    let service_file_path = format!("/etc/systemd/system/rustyproxyssl{}.service", port);
+
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(service_file_path)?;
+
+    file.write_all(service_file_content.as_bytes())?;
+
     let commands = [
-        format!("grep -qE '^(::|0\\.0\\.0\\.0:)?{port_str}$' /etc/stunnel/stunnel.conf || echo '\naccept = {prefix}{port_str}' >> /etc/stunnel/stunnel.conf"),
-        format!("systemctl is-active --quiet {} && systemctl restart {} || systemctl start {}", stunnel_name, stunnel_name, stunnel_name),
+        "systemctl daemon-reload".to_string(),
+        format!("systemctl enable rustyproxyssl{}.service", port),
+        format!("systemctl start rustyproxyssl{}.service", port),
     ];
     for command in commands {
         run_command(command);
     }
     Ok(())
 }
-pub fn del_stunnel_port(port: usize) -> std::result::Result<(), io::Error> {
-    let port_str = port.to_string();
-    let stunnel_name = get_stunnel_service();
+pub fn del_ssl_proxy_port(port: usize) -> Result<(), io::Error> {
     let commands = [
-        format!("sed -i '/{port_str}/d' /etc/stunnel/stunnel.conf"),
-        format!("grep -q 'accept' /etc/stunnel/stunnel.conf  && systemctl restart {} || systemctl stop {}", stunnel_name, stunnel_name)
+        format!("systemctl disable rustyproxyssl{}.service", port),
+        format!("systemctl stop rustyproxyssl{}.service", port),
     ];
     for command in commands {
         run_command(command);
     }
+    fs::remove_file(format!("/etc/systemd/system/rustyproxyssl{}.service", port))?;
     Ok(())
 }
+
 
 pub fn add_badvpn_port(port: usize) -> std::result::Result<(), io::Error> {
     let service_file_content = format!(r#"
@@ -167,7 +191,7 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitMEMLOCK=infinity
 LimitSTACK=infinity
-LimitCORE=infinity
+LimitCORE=0
 LimitAS=infinity
 LimitRSS=infinity
 LimitCPU=infinity
@@ -333,23 +357,23 @@ pub fn disable_openvpn() -> std::result::Result<(), io::Error> {
 }
 
 pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
+    let mut stmt = sqlite_conn.prepare("SELECT proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
+                ports: row.get::<_, String>(0).ok(),
+            },
+            sslproxy: RustyProxySSL {
                 ports: row.get::<_, String>(1).ok(),
             },
-            stunnel: Stunnel {
+            badvpn: BadVpn {
                 ports: row.get::<_, String>(2).ok(),
             },
-            badvpn: BadVpn {
+            checkuser: CheckUser {
                 ports: row.get::<_, String>(3).ok(),
             },
-            checkuser: CheckUser {
-                ports: row.get::<_, String>(4).ok(),
-            },
             openvpn: OpenVpn {
-                port: row.get::<_, String>(5).ok(),
+                port: row.get::<_, String>(4).ok(),
             },
         })
     })?.collect::<Result<_, _>>()?;
@@ -366,7 +390,7 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (?, NULL, NULL, NULL, NULL)",
+                "INSERT INTO connections (proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (?, NULL, NULL, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -374,41 +398,41 @@ pub fn add_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
     }
 }
 
-pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
+pub fn add_sslproxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
+    let mut stmt = sqlite_conn.prepare("SELECT proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
+                ports: row.get::<_, String>(0).ok(),
+            },
+            sslproxy: RustyProxySSL {
                 ports: row.get::<_, String>(1).ok(),
             },
-            stunnel: Stunnel {
+            badvpn: BadVpn {
                 ports: row.get::<_, String>(2).ok(),
             },
-            badvpn: BadVpn {
+            checkuser: CheckUser {
                 ports: row.get::<_, String>(3).ok(),
             },
-            checkuser: CheckUser {
-                ports: row.get::<_, String>(4).ok(),
-            },
             openvpn: OpenVpn {
-                port: row.get::<_, String>(5).ok(),
+                port: row.get::<_, String>(4).ok(),
             },
         })
     })?.collect::<Result<_, _>>()?;
 
     match connections.first() {
         Some(conn) => {
-            let mut ports = conn.stunnel.ports.clone().unwrap_or_default();
+            let mut ports = conn.sslproxy.ports.clone().unwrap_or_default();
             if !ports.is_empty() {
                 ports.push('|');
             }
             ports.push_str(&port.to_string());
-            sqlite_conn.execute("UPDATE connections SET stunnel_ports = ? WHERE id = 1", params![ports])?;
+            sqlite_conn.execute("UPDATE connections SET sslproxy_ports = ? WHERE id = 1", params![ports])?;
             Ok(())
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, ?, NULL, NULL, NULL)",
+                "INSERT INTO connections (proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, ?, NULL, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -418,23 +442,23 @@ pub fn add_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
 
 
 pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
+    let mut stmt = sqlite_conn.prepare("SELECT proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
+                ports: row.get::<_, String>(0).ok(),
+            },
+            sslproxy: RustyProxySSL {
                 ports: row.get::<_, String>(1).ok(),
             },
-            stunnel: Stunnel {
+            badvpn: BadVpn {
                 ports: row.get::<_, String>(2).ok(),
             },
-            badvpn: BadVpn {
+            checkuser: CheckUser {
                 ports: row.get::<_, String>(3).ok(),
             },
-            checkuser: CheckUser {
-                ports: row.get::<_, String>(4).ok(),
-            },
             openvpn: OpenVpn {
-                port: row.get::<_, String>(5).ok(),
+                port: row.get::<_, String>(4).ok(),
             },
         })
     })?.collect::<Result<_, _>>()?;
@@ -451,7 +475,7 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, ?, NULL, NULL)",
+                "INSERT INTO connections (proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, ?, NULL, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -460,23 +484,23 @@ pub fn add_badvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), 
 }
 
 pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT * FROM connections LIMIT 1")?;
+    let mut stmt = sqlite_conn.prepare("SELECT proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
     let connections: Vec<Connections> = stmt.query_map(params![], |row| {
         Ok(Connections {
             proxy: RustyProxy {
+                ports: row.get::<_, String>(0).ok(),
+            },
+            sslproxy: RustyProxySSL {
                 ports: row.get::<_, String>(1).ok(),
             },
-            stunnel: Stunnel {
+            badvpn: BadVpn {
                 ports: row.get::<_, String>(2).ok(),
             },
-            badvpn: BadVpn {
+            checkuser: CheckUser {
                 ports: row.get::<_, String>(3).ok(),
             },
-            checkuser: CheckUser {
-                ports: row.get::<_, String>(4).ok(),
-            },
             openvpn: OpenVpn {
-                port: row.get::<_, String>(5).ok(),
+                port: row.get::<_, String>(4).ok(),
             },
         })
     })?.collect::<Result<_, _>>()?;
@@ -493,7 +517,7 @@ pub fn add_checkuser_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(
         },
         None => {
             sqlite_conn.execute(
-                "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, ?, NULL)",
+                "INSERT INTO connections (proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, ?, NULL)",
                 params![port.to_string()]
             )?;
             Ok(())
@@ -515,7 +539,7 @@ pub fn add_openvpn_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
         )?;
     } else {
         sqlite_conn.execute(
-            "INSERT INTO connections (proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, NULL, ?)",
+            "INSERT INTO connections (proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port) VALUES (NULL, NULL, NULL, NULL, ?)",
             params![port_str],
         )?;
     }
@@ -540,8 +564,8 @@ pub fn del_proxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), r
     }
 }
 
-pub fn del_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
-    let mut stmt = sqlite_conn.prepare("SELECT stunnel_ports FROM connections LIMIT 1")?;
+pub fn del_sslproxy_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(), rusqlite::Error> {
+    let mut stmt = sqlite_conn.prepare("SELECT sslproxy_ports FROM connections LIMIT 1")?;
     let connections: Vec<String> = stmt.query_map(params![], |row| {
         row.get::<_, String>(0)
     })?.collect::<Result<_, _>>()?;
@@ -550,7 +574,7 @@ pub fn del_stunnel_port_in_db(sqlite_conn: &Connection, port: u16) -> Result<(),
         let mut ports_vec: Vec<String> = existing_ports.trim().split('|').map(String::from).collect();
         ports_vec.retain(|p| p != &port.to_string());
         let new_ports = ports_vec.join("|");
-        sqlite_conn.execute("UPDATE connections SET stunnel_ports = ? WHERE id = 1", params![new_ports])?;
+        sqlite_conn.execute("UPDATE connections SET sslproxy_ports = ? WHERE id = 1", params![new_ports])?;
         Ok(())
     } else {
         Err(rusqlite::Error::UnwindingPanic)

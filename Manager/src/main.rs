@@ -839,6 +839,8 @@ fn utils_menu(sqlite_conn: &Connection) {
         println!("| {:<45}|", "4 - Gerenciar Journald");
         println!("| {:<45}|", "5 - Criar backup");
         println!("| {:<45}|", "6 - Restaurar backup");
+        println!("| {:<45}|", "7 - Alterar senha root");
+        println!("| {:<45}|", "8 - Reiniciar Servidor");
         println!("| {:<45}|", "0 - Voltar ao menu");
         println!("------------------------------------------------");
         println!();
@@ -927,6 +929,27 @@ fn utils_menu(sqlite_conn: &Connection) {
                         io::stdin().read_line(&mut return_string).expect("");
 
                     }
+                    7 => {
+                        Command::new("clear").status().unwrap();
+                        loop {
+                            println!("Digite a nova senha root:");
+                            let mut new_pass = String::new();
+                            io::stdin().read_line(&mut new_pass).expect("");
+                            new_pass = new_pass.trim().to_string();
+                            if new_pass.len() >= 4 {
+                                run_command_and_get_output(format!("(echo {}; echo {}) | passwd root", new_pass, new_pass).as_str());
+                                println!("senha alterada");
+                                break;
+                            }
+                        }
+                        println!("> pressione qualquer tecla para voltar ao menu");
+                        let mut return_string = String::new();
+                        io::stdin().read_line(&mut return_string).expect("");
+                    }
+                    8 => {
+                        Command::new("reboot").status().unwrap();
+                    }
+
                     0 => {
                         break
                     }

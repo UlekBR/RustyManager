@@ -80,7 +80,7 @@ else
     show_progress "Atualizando o sistema..."
     case $OS_NAME in
         ubuntu|debian)
-            apt-get upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
+            apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
             apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
         almalinux|rocky)
@@ -112,7 +112,7 @@ else
         id INTEGER PRIMARY KEY
     );
     "
-    for column in "proxy_ports" "stunnel_ports" "badvpn_ports" "checkuser_ports" "openvpn_port"; do
+    for column in "proxy_ports" "sslproxy_ports" "badvpn_ports" "checkuser_ports" "openvpn_port"; do
         column_exists=$(sqlite3 /opt/rustymanager/db "PRAGMA table_info(connections);" | grep -w "$column" | wc -l)
         if [ "$column_exists" -eq 0 ]; then
             sqlite3 /opt/rustymanager/db "ALTER TABLE connections ADD COLUMN $column TEXT;"
@@ -138,10 +138,14 @@ else
     git clone --branch "$SCRIPT_VERSION" --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git /root/RustyManager > /dev/null 2>&1 || error_exit "Falha ao clonar RustyManager"
 
     cd /root/RustyManager/
+    mv -f ./Utils/ssl/cert.pem /opt/rustymanager/ssl/cert.pem
+    mv -f ./Utils/ssl/key.pem /opt/rustymanager/ssl/key.pem
+
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
     mv -f ./target/release/SshScript /opt/rustymanager/manager
     mv -f ./target/release/CheckUser /opt/rustymanager/checkuser
     mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy
+    mv -f ./target/release/RustyProxySSL /opt/rustymanager/rustyproxyssl
     mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
     increment_step
 
@@ -156,9 +160,9 @@ else
 
     # ---->>>> Configuração de permissões
     show_progress "Configurando permissões..."
-    chmod +x /opt/rustymanager/{manager,rustyproxy,connectionsmanager,checkuser,badvpn}
+    chmod +x /opt/rustymanager/{manager,rustyproxy,rustyproxyssl, connectionsmanager,checkuser,badvpn}
     if [[ "$OS_NAME" == "almalinux" || "$OS_NAME" == "rockylinux" ]]; then
-        sudo chcon -t bin_t /opt/rustymanager/{manager,rustyproxy,connectionsmanager,checkuser,badvpn}
+        sudo chcon -t bin_t /opt/rustymanager/{manager,rustyproxy,rustyproxyssl,connectionsmanager,checkuser,badvpn}
     fi
     ln -sf /opt/rustymanager/manager /usr/local/bin/menu
     increment_step
@@ -166,7 +170,6 @@ else
 
     # ---->>>> Instalar speedtest
     show_progress "Instalando Speedtest..."
-
     case $OS_NAME in
         ubuntu|debian)
             curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash > /dev/null 2>&1 || error_exit "Falha ao baixar e instalar o script do speedtest"
@@ -189,23 +192,6 @@ else
             dnf install htop -y > /dev/null 2>&1 || error_exit "Falha ao instalar o htop"
             ;;
     esac
-    increment_step
-
-    # ---->>>> Instalando STunnel
-    show_progress "Instalando STunnel..."
-    case $OS_NAME in
-        ubuntu|debian)
-            apt-get install stunnel4 -y > /dev/null 2>&1 || error_exit "Falha ao instalar o stunnel"
-            ;;
-        almalinux|rocky)
-            dnf install stunnel -y > /dev/null 2>&1 || error_exit "Falha ao instalar o stunnel"
-            ;;
-    esac
-    curl -sf -o /etc/stunnel/cert.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/cert.pem || error_exit "Falha ao baixar cert.pem"
-    curl -sf -o /etc/stunnel/key.pem https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/key.pem || error_exit "Falha ao baixar key.pem"
-    curl -sf -o /etc/stunnel/stunnel.conf https://raw.githubusercontent.com/UlekBR/RustyManager/refs/heads/$SCRIPT_VERSION/Utils/stunnel/conf || error_exit "Falha ao baixar config"
-    systemctl stop stunnel4 > /dev/null 2>&1
-    systemctl disable stunnel4 > /dev/null 2>&1
     increment_step
 
     # ---->>>> Instalando OpenVPN
@@ -262,7 +248,6 @@ group nogroup
 persist-key
 persist-tun
 status openvpn-status.log
-management localhost 7505
 client-to-client
 client-cert-not-required
 username-as-common-name
