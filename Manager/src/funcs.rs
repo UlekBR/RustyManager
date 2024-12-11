@@ -230,7 +230,7 @@ pub fn user_already_exists(user: &str) -> bool {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Connections {
     pub(crate) proxy: RustyProxy,
-    pub(crate) stunnel: Stunnel,
+    pub(crate) sslproxy: RustyProxySSL,
     pub(crate) badvpn: BadVpn,
     pub(crate) checkuser: CheckUser,
     pub(crate) openvpn: OpenVpn,
@@ -242,7 +242,7 @@ pub struct RustyProxy {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Stunnel {
+pub struct RustyProxySSL {
     pub(crate) ports: Option<Vec<u16>>,
 }
 
@@ -264,7 +264,7 @@ pub struct OpenVpn {
 
 
 pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare("SELECT proxy_ports, stunnel_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
+    let mut stmt = conn.prepare("SELECT proxy_ports, sslproxy_ports, badvpn_ports, checkuser_ports, openvpn_port FROM connections LIMIT 1")?;
 
     let connection: Option<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> = stmt.query_row([], |row| {
         Ok((
@@ -284,7 +284,7 @@ pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::er
                         ports.split('|').filter_map(|p| p.parse::<u16>().ok()).collect()
                     }).unwrap_or_else(|| Vec::new())),
                 },
-                stunnel: Stunnel {
+                sslproxy: RustyProxySSL {
                     ports: Option::from(stunnel_ports.map(|ports| {
                         ports.split('|').filter_map(|p| p.parse::<u16>().ok()).collect()
                     }).unwrap_or_else(|| Vec::new())),
@@ -308,7 +308,7 @@ pub fn get_connections(conn: &Connection) -> Result<Connections, Box<dyn std::er
             proxy: RustyProxy {
                 ports: Some(Vec::new()),
             },
-            stunnel: Stunnel {
+            sslproxy: RustyProxySSL {
                 ports: Some(Vec::new()),
             },
             badvpn: BadVpn {
@@ -402,16 +402,11 @@ pub fn disable_proxy_port(port: String) {
 
 
 
-
-pub fn enable_stunnel_port(port: String, ipv6: bool) {
-    if ipv6 {
-        run_command(format!("/opt/rustymanager/connectionsmanager --conn stunnel --enable-port {} --ipv6 true", port));
-    } else {
-        run_command(format!("/opt/rustymanager/connectionsmanager --conn stunnel --enable-port {}", port));
-    }
+pub fn enable_sslproxy_port(port: String) {
+    run_command(format!("/opt/rustymanager/connectionsmanager --conn sslproxy --enable-port {}", port));
 }
-pub fn disable_stunnel_port(port: String) {
-    run_command(format!("/opt/rustymanager/connectionsmanager --conn stunnel --disable-port {}", port));
+pub fn disable_sslproxy_port(port: String) {
+    run_command(format!("/opt/rustymanager/connectionsmanager --conn sslproxy --disable-port {}", port));
 }
 
 pub fn enable_badvpn_port(port: String) {

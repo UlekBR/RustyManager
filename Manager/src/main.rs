@@ -9,7 +9,7 @@ use std::time::Duration;
 use chrono::DateTime;
 use rusqlite::Connection;
 use crate::text_funcs::{text_to_bold};
-use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, enable_stunnel_port, disable_stunnel_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_openvpn, disable_openvpn, restore_backup, make_backup};
+use crate::funcs::{create_user, change_limit, change_pass, change_validity, expired_report_json, expired_report_vec, generate_test, is_port_avaliable, remove_user, user_already_exists, users_report_json, users_report_vec, run_command_and_get_output, get_connections, enable_badvpn_port, disable_badvpn_port, enable_proxy_port, disable_proxy_port, online_report_json, online_report, userdata, speedtest_data, enable_checkuser_port, disable_checkuser_port, journald_status, disable_journald, enable_journald, get_services, enable_openvpn, disable_openvpn, restore_backup, make_backup, enable_sslproxy_port, disable_sslproxy_port};
 
 fn main() {
     let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
@@ -776,7 +776,7 @@ fn connection_menu(sqlite_conn: &Connection) {
         println!("------------------------------------------------");
         println!("| 1 - {:<40} |", "Portas Ativas");
         println!("| 2 - {:<40} |", "RustyProxy (ws/wss/socks)");
-        println!("| 3 - {:<40} |", "Stunnel");
+        println!("| 3 - {:<40} |", "RustyProxySSL (direct/ws/wss)");
         println!("| 4 - {:<40} |", "Badvpn");
         println!("| 5 - {:<40} |", "OpenVpn");
         println!("| 0 - {:<40} |", "Voltar ao menu");
@@ -795,7 +795,7 @@ fn connection_menu(sqlite_conn: &Connection) {
                         proxy_menu(&sqlite_conn)
                     }
                     3 => {
-                        stunnel_menu(&sqlite_conn)
+                        sslproxy_menu(&sqlite_conn)
                     }
                     4 => {
                         badvpn_menu(&sqlite_conn)
@@ -1077,29 +1077,31 @@ fn proxy_menu(sqlite_conn: &Connection) {
         }
     }
 }
-fn stunnel_menu(sqlite_conn: &Connection) {
+
+fn sslproxy_menu(sqlite_conn: &Connection) {
     loop {
         Command::new("clear").status().unwrap();
-        
+
         println!("------------------------------------------------");
-        println!("|                    {}                   |", text_to_bold("STUNNEL"));
+        println!("|                  {}                 |", text_to_bold("RUSTY PROXY SSL"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
-        let stunnel_ports = conn.stunnel.ports.unwrap_or_default();
-        if stunnel_ports.is_empty() {
+        let proxy_ports = conn.sslproxy.ports.unwrap_or_default();
+        if proxy_ports.is_empty() {
             println!("| Portas(s): {:<34}|", "nenhuma");
         } else {
-            let active_ports = stunnel_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
+            let active_ports = proxy_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(" ");
             println!("| Portas(s): {:<34}|", active_ports);
         }
 
-        println!("| 1 - {:<40} |", "Abrir Porta");
-        println!("| 2 - {:<40} |", "Abrir Porta Ipv6 (usuarios avançados)");
-        println!("| 3 - {:<40} |", "Fechar Porta");
-        println!("| 0 - {:<40} |", "Voltar ao menu");
         println!("------------------------------------------------");
+        println!("| {:<45}|", "1 - Abrir Porta");
+        println!("| {:<45}|", "2 - Fechar Porta");
+        println!("| {:<45}|", "0 - Voltar ao menu");
+        println!("------------------------------------------------");
+        println!();
         let mut option = String::new();
-        println!("\n --> Selecione uma opção:");
+        println!(" --> Selecione uma opção:");
         io::stdin().read_line(&mut option).unwrap();
         match option.trim().parse() {
             Ok(op) => {
@@ -1127,44 +1129,13 @@ fn stunnel_menu(sqlite_conn: &Connection) {
                             }
 
                         }
-                        enable_stunnel_port(port, false);
+                        enable_sslproxy_port(port);
                         Command::new("clear").status().unwrap();
                         println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
                         let mut return_string = String::new();
                         io::stdin().read_line(&mut return_string).expect("");
                     }
                     2 => {
-                        let mut port = String::new();
-                        loop {
-                            println!("Digite a porta: ");
-                            if !port.is_empty() {
-                                port = String::new();
-                            };
-                            io::stdin().read_line(&mut port).unwrap();
-                            port = port.trim().to_string();
-                            match port.parse::<usize>() {
-                                Ok(port) => {
-                                    if !is_port_avaliable(port).unwrap() {
-                                        println!("essa porta já está em uso, digite outra:")
-                                    } else {
-                                        break
-                                    }
-                                }
-                                Err(..) => {
-                                    println!("digite uma porta valida");
-                                }
-                            }
-
-                        }
-                        enable_stunnel_port(port, true);
-                        Command::new("clear").status().unwrap();
-                        println!("\n> Porta ativada com sucesso, pressione qualquer tecla para voltar ao menu");
-                        let mut return_string = String::new();
-                        io::stdin().read_line(&mut return_string).expect("");
-                    }
-
-
-                    3 => {
                         let mut port = String::new();
                         loop {
                             println!("Digite a porta: ");
@@ -1188,7 +1159,7 @@ fn stunnel_menu(sqlite_conn: &Connection) {
 
                         }
 
-                        disable_stunnel_port(port);
+                        disable_sslproxy_port(port);
                         Command::new("clear").status().unwrap();
                         println!("\n> Porta desativada com sucesso, pressione qualquer tecla para voltar ao menu");
                         let mut return_string = String::new();

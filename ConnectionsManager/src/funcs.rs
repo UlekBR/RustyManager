@@ -117,7 +117,7 @@ pub fn del_proxy_port(port: usize) -> Result<(), io::Error> {
 
 pub fn add_ssl_proxy_port(port: usize, cert: Option<&String>, key: Option<&String>) -> Result<(), io::Error> {
 
-    let mut command = format!("/opt/rustymanager/rustyproxy --proxy-port {}", port);
+    let mut command = format!("/opt/rustymanager/rustyproxyssl --proxy-port {}", port);
     if cert.is_some() {
         command = format!("{} --cert {}", command, cert.unwrap().to_string());
     }
