@@ -135,18 +135,19 @@ else
     show_progress "Compilando RustyManager, isso pode levar bastante tempo dependendo da maquina..."
     mkdir -p /opt/rustymanager
     mkdir -p /opt/rustymanager/ssl
-    git clone --branch "beta" --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git /root/RustyManager > /dev/null 2>&1 || error_exit "Falha ao clonar RustyManager"
+    git clone --branch "$SCRIPT_VERSION" --recurse-submodules --single-branch https://github.com/UlekBR/RustyManager.git /root/RustyManager > /dev/null 2>&1 || error_exit "Falha ao clonar RustyManager"
 
     cd /root/RustyManager/
-    mv -f ./Utils/ssl/cert.pem /opt/rustymanager/ssl/cert.pem
-    mv -f ./Utils/ssl/key.pem /opt/rustymanager/ssl/key.pem
+    mv -f ./Utils/ssl/cert.pem /opt/rustymanager/ssl/cert.pem > /dev/null 2>&1
+    mv -f ./Utils/ssl/key.pem /opt/rustymanager/ssl/key.pem > /dev/null 2>&1
 
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
-    mv -f ./target/release/SshScript /opt/rustymanager/manager
-    mv -f ./target/release/CheckUser /opt/rustymanager/checkuser
-    mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy
-    mv -f ./target/release/RustyProxySSL /opt/rustymanager/rustyproxyssl
-    mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager
+mv -f ./target/release/SshScript /opt/rustymanager/manager > /dev/null 2>&1
+mv -f ./target/release/CheckUser /opt/rustymanager/checkuser > /dev/null 2>&1
+mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy > /dev/null 2>&1
+mv -f ./target/release/RustyProxySSL /opt/rustymanager/rustyproxyssl > /dev/null 2>&1
+mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager > /dev/null 2>&1
+
     increment_step
 
     # ---->>>> Compilar BadVPN
