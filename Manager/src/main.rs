@@ -877,7 +877,6 @@ fn utils_menu(sqlite_conn: &Connection) {
                         println!("| Rede: {:<38} |", speedtest.interface.name);
                         println!("| Ip: {:<40} |", speedtest.interface.internal_ip);
                         println!("| Download: {:<34} |", format!("{:.2}mbps", download_mbps));
-                        println!("| Download: {:<34} |", format!("{:.2}mbps", download_mbps));
                         println!("| Upload:   {:<34} |", format!("{:.2}mbps", upload_mbps));
                         println!("| Ping:     {:<32}   |", format!("{:.2}ms", speedtest.ping.latency));
                         println!("------------------------------------------------");
