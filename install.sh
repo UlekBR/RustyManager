@@ -142,18 +142,18 @@ else
     mv -f ./Utils/ssl/key.pem /opt/rustymanager/ssl/key.pem > /dev/null 2>&1
 
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
-mv -f ./target/release/SshScript /opt/rustymanager/manager > /dev/null 2>&1
-mv -f ./target/release/CheckUser /opt/rustymanager/checkuser > /dev/null 2>&1
-mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy > /dev/null 2>&1
-mv -f ./target/release/RustyProxySSL /opt/rustymanager/rustyproxyssl > /dev/null 2>&1
-mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager > /dev/null 2>&1
+    mv -f ./target/release/SshScript /opt/rustymanager/manager > /dev/null 2>&1
+    mv -f ./target/release/CheckUser /opt/rustymanager/checkuser > /dev/null 2>&1
+    mv -f ./target/release/RustyProxy /opt/rustymanager/rustyproxy > /dev/null 2>&1
+    mv -f ./target/release/RustyProxySSL /opt/rustymanager/rustyproxyssl > /dev/null 2>&1
+    mv -f ./target/release/ConnectionsManager /opt/rustymanager/connectionsmanager > /dev/null 2>&1
 
     increment_step
 
     # ---->>>> Compilar BadVPN
     show_progress "Compilando BadVPN..."
-    mkdir -p /root/RustyManager/BadVpn/badvpn/badvpn-build
-    cd /root/RustyManager/BadVpn/badvpn/badvpn-build
+    mkdir -p /root/RustyManager/BadVpn/src/badvpn-build
+    cd /root/RustyManager/BadVpn/src/badvpn-build
     cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 > /dev/null 2>&1 || error_exit "Falha ao configurar cmake para BadVPN"
     make > /dev/null 2>&1 || error_exit "Falha ao compilar BadVPN"
     mv -f udpgw/badvpn-udpgw /opt/rustymanager/badvpn

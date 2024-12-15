@@ -1,0 +1,2 @@
+/usr/bin/ar qc libbadvpn-base.a CMakeFiles/base.dir/DebugObject.c.o CMakeFiles/base.dir/BLog.c.o CMakeFiles/base.dir/BPending.c.o CMakeFiles/base.dir/BLog_syslog.c.o
+/usr/bin/ranlib libbadvpn-base.a

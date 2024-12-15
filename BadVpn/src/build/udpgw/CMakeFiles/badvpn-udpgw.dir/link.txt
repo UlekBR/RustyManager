@@ -1,0 +1,1 @@
+/usr/bin/cc -rdynamic -Wl,--dependency-file=CMakeFiles/badvpn-udpgw.dir/link.d "CMakeFiles/badvpn-udpgw.dir/udpgw.c.o" -o badvpn-udpgw  -lrt -lpthread ../system/libbadvpn-system.a ../flow/libbadvpn-flow.a ../flowextra/libbadvpn-flowextra.a ../system/libbadvpn-system.a ../flow/libbadvpn-flow.a ../base/libbadvpn-base.a -lrt -lpthread

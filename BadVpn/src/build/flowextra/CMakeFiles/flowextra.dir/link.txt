@@ -1,0 +1,2 @@
+/usr/bin/ar qc libbadvpn-flowextra.a CMakeFiles/flowextra.dir/PacketPassInactivityMonitor.c.o CMakeFiles/flowextra.dir/KeepaliveIO.c.o
+/usr/bin/ranlib libbadvpn-flowextra.a
