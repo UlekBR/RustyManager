@@ -1,2 +1,0 @@
-/usr/bin/ar qc libbadvpn-system.a CMakeFiles/system.dir/BTime.c.o CMakeFiles/system.dir/BSignal.c.o CMakeFiles/system.dir/BNetwork.c.o CMakeFiles/system.dir/BConnection_common.c.o CMakeFiles/system.dir/BDatagram_common.c.o CMakeFiles/system.dir/BUnixSignal.c.o CMakeFiles/system.dir/BConnection_unix.c.o CMakeFiles/system.dir/BDatagram_unix.c.o CMakeFiles/system.dir/BProcess.c.o CMakeFiles/system.dir/BInputProcess.c.o CMakeFiles/system.dir/BThreadSignal.c.o CMakeFiles/system.dir/BLockReactor.c.o CMakeFiles/system.dir/BReactor_badvpn.c.o
-/usr/bin/ranlib libbadvpn-system.a
