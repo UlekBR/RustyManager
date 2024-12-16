@@ -5,6 +5,7 @@ use std::process::Command;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+
 #[derive(Debug, Serialize, Deserialize)]
 struct DtunnelResponse {
     username: String,
