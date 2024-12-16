@@ -1,20 +1,10 @@
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
-use hyper::service::{make_service_fn, service_fn};
-use std::convert::Infallible;
+use std::{env, thread};
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::process::Command;
-use clap::Parser;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-
-#[derive(Parser)]
-#[command(name = "CheckUser")]
-#[command(about = "a simple checkuser")]
-struct Args {
-    #[arg(long, default_value = "3232")]
-    port: u16
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct DtunnelResponse {
     username: String,
@@ -32,6 +22,11 @@ struct GltunnelResponse {
     limit_connection: String,
     expiration_date: String,
     expiration_days: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Conecta4gRequest {
+    user: String
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,103 +50,159 @@ struct AnyVpnResponse {
     uuid: String,
 }
 
-#[tokio::main]
-async fn main() {
-    let args = Args::parse();
-    let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(handle_request)) });
-    let addr = ([0, 0, 0, 0, 0, 0, 0, 0], args.port).into();
-    let server = Server::bind(&addr).serve(make_svc);
-    println!("Listening on http://[::]:{}", args.port);
-    if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+fn handle_client(mut stream: TcpStream) {
+    let mut buffer = [0; 1024];
+    match stream.read(&mut buffer) {
+        Ok(_) => {
+            if let Ok(request) = std::str::from_utf8(&buffer) {
+                let method = request.split(" ").collect::<Vec<&str>>()[0];
+                let uri = request.split(" ").collect::<Vec<&str>>()[1].split("HTTP/").collect::<Vec<&str>>()[0];
+
+                let mut app = "";
+                let mut user = "";
+                let mut device_id = "";
+
+
+                let mut post_user = String::new();
+                if method == "GET" {
+                    if uri.contains("?deviceId") {
+                        app = "dtunnel";
+                        user = uri.split("check/").last().unwrap().split("?deviceId").next().unwrap();
+                    } else if uri.contains("check/") {
+                        app = "gltunnel";
+                        user = uri.split("check/").last().unwrap().split("?").next().unwrap();
+                    }
+                } else if  method == "POST" {
+                    let post_str = if let Some(pos) = request.rfind('\n') {
+                        &request[pos + 1..].split('\0').collect::<Vec<&str>>()[0].trim()
+                    } else {
+                        "".trim()
+                    };
+
+                    if let Ok(data) = serde_json::from_str::<Conecta4gRequest>(&post_str) {
+                        app = "conecta4g";
+                        post_user = data.user;
+                    } else {
+                        app = "anyvpn";
+                        post_user = post_str.split("username=").last().unwrap().split('&').next().unwrap().to_string();
+                        device_id = post_str.split("deviceid=").last().unwrap();
+                    }
+                    user = &*post_user;
+                }
+
+                if !user.is_empty() && user != "root" && user_already_exists(user) {
+                    let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
+                    let user_data = get_user(user, &sqlite_conn);
+
+                    let checker_response = match app {
+                        "dtunnel" => {
+                            let response = DtunnelResponse {
+                                username: user_data.user,
+                                count_connections: user_data.connections.parse().unwrap_or(0),
+                                limit_connections: user_data.limit.parse().unwrap_or(0),
+                                expiration_date: user_data.expiry_date,
+                                expiration_days: user_data.expiry_days.parse().unwrap_or(0),
+                                id: 0,
+                            };
+                            serde_json::to_string_pretty(&response).expect("Serialization failed")
+                        },
+                        "gltunnel" => {
+                            let response = GltunnelResponse {
+                                username: user_data.user,
+                                count_connection: user_data.connections,
+                                limit_connection: user_data.limit,
+                                expiration_date: user_data.expiry_date,
+                                expiration_days: user_data.expiry_days,
+                            };
+                            serde_json::to_string_pretty(&response).expect("Serialization failed")
+                        },
+                        "conecta4g" => {
+                            let response = Conecta4gResponse {
+                                username: user.to_string(),
+                                count_connection: user_data.connections,
+                                limiter_user: user_data.limit,
+                                expiration_date: user_data.expiry_date,
+                                expiration_days: user_data.expiry_days,
+                            };
+                            serde_json::to_string_pretty(&response).expect("Serialization failed")
+                        },
+                        "anyvpn" => {
+                            let response = AnyVpnResponse {
+                                username: user.to_string(),
+                                is_active: "true".to_string(),
+                                expiry: format!("{} dias.", user_data.expiry_days),
+                                expiration_date: user_data.expiry_date_anymod,
+                                device_id: device_id.to_string(),
+                                uuid: "null".to_string(),
+                            };
+                            serde_json::to_string_pretty(&response).expect("Serialization failed")
+                        }
+
+                        _ => { "".to_string() }
+                    };
+
+
+                    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{}", checker_response);
+                    stream.write_all(response.as_bytes()).unwrap();
+                    stream.flush().unwrap();
+                } else {
+                    let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello :)".to_string();
+                    stream.write_all(response.as_bytes()).unwrap();
+                    stream.flush().unwrap();
+                }
+            }
+        }
+        Err(e) => eprintln!("erro on read client: {}", e),
     }
 }
-async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
-    let uri = req.uri().to_string();
-    println!("{}", uri);
 
-    match *req.method() {
-        Method::GET => {
-            return if uri.contains("?deviceId") {
-                // app = dtunnel
-                let user = uri.split("check/").last().unwrap().split("?deviceId").next().unwrap();
-                let user_data = get_user(user, &sqlite_conn);
-                let response = DtunnelResponse {
-                    username: user_data.user,
-                    count_connections: user_data.connections.parse().unwrap_or(0),
-                    limit_connections: user_data.limit.parse().unwrap_or(0),
-                    expiration_date: user_data.expiry_date,
-                    expiration_days: user_data.expiry_days.parse().unwrap_or(0),
-                    id: 0,
-                };
-                Ok(Response::new(Body::from(
-                    serde_json::to_string_pretty(&response).expect("Serialization failed"),
-                )))
-            } else if uri.contains("check/") {
-                // app = gltunnel
-                let user = uri.split("check/").last().unwrap().split("?").next().unwrap();
-                let user_data = get_user(user, &sqlite_conn);
-                let response = GltunnelResponse {
-                    username: user_data.user,
-                    count_connection: user_data.connections,
-                    limit_connection: user_data.limit,
-                    expiration_date: user_data.expiry_date,
-                    expiration_days: user_data.expiry_days,
-                };
-                Ok(Response::new(Body::from(
-                    serde_json::to_string_pretty(&response).expect("Serialization failed"),
-                )))
-            } else {
-                Ok(Response::new(Body::from("RustyManager Checkuser :)\nby @UlekBR")))
+fn main() {
+    let port = get_port();
+    let listener = TcpListener::bind(format!("[::]:{}", port)).expect("error on init server");
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                thread::spawn(move || {
+                    handle_client(stream);
+                });
             }
-        }
-        Method::POST => {
-            let whole_body = hyper::body::to_bytes(req.into_body()).await.unwrap();
-            let body_str = String::from_utf8(whole_body.to_vec()).unwrap();
-
-            if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&body_str) {
-                if let Some(username) = json_data.get("user").and_then(|v| v.as_str()) {
-                    // app = conecta4g
-                    let user_data = get_user(username, &sqlite_conn);
-                    let response = Conecta4gResponse {
-                        username: username.to_string(),
-                        count_connection: user_data.connections,
-                        limiter_user: user_data.limit,
-                        expiration_date: user_data.expiry_date,
-                        expiration_days: user_data.expiry_days,
-                    };
-                    let json_response = serde_json::to_string(&response).unwrap();
-                    return Ok(Response::new(Body::from(json_response)));
-                }else {
-                    Ok(Response::new(Body::from("RustyManager Checkuser :)\nby @UlekBR")))
-                }
-            } else {
-                // app = anyvpn
-                let username = body_str.split("username=").last().unwrap().split('&').next().unwrap();
-                let device_id = body_str.split("deviceid=").last().unwrap();
-
-                let user_data = get_user(username, &sqlite_conn);
-                let response = AnyVpnResponse {
-                    username: username.to_string(),
-                    is_active: "true".to_string(),
-                    expiry: format!("{} dias.", user_data.expiry_days),
-                    expiration_date: user_data.expiry_date_anymod,
-                    device_id: device_id.to_string(),
-                    uuid: "null".to_string(),
-                };
-                let json_response = serde_json::to_string(&response).unwrap();
-                return Ok(Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "application/json")
-                    .body(Body::from(json_response))
-                    .unwrap());
+            Err(e) => {
+                eprintln!("error in accept user {}", e);
             }
-        }
-        _ => {
-            return Ok(Response::new(Body::from("RustyManager Checkuser :)\nby @UlekBR")));
         }
     }
+}
+
+
+fn get_port() -> u16 {
+    let args: Vec<String> = env::args().collect();
+    let mut port = 5454;
+
+    for i in 1..args.len() {
+        if args[i] == "--port" {
+            if i + 1 < args.len() {
+                port = args[i + 1].parse().unwrap_or(5454);
+            }
+        }
+    }
+
+    port
+}
+
+pub fn user_already_exists(user: &str) -> bool {
+    let exec = Command::new("bash")
+        .arg("-c")
+        .arg(format!("getent passwd {}", user))
+        .output()
+        .expect("error on run command");
+
+    if exec.status.success() {
+        if !exec.stdout.is_empty() {
+            return true
+        }
+    }
+    false
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
