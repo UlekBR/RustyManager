@@ -1082,7 +1082,7 @@ fn sslproxy_menu(sqlite_conn: &Connection) {
         Command::new("clear").status().unwrap();
 
         println!("------------------------------------------------");
-        println!("|                  {}                 |", text_to_bold("RUSTY PROXY SSL"));
+        println!("|                  {}              |", text_to_bold("RUSTY PROXY SSL"));
         println!("------------------------------------------------");
         let conn = get_connections(&sqlite_conn).unwrap();
         let sslproxy_ports = conn.sslproxy.ports.unwrap_or_default();
