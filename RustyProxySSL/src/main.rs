@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let addr = format!("[::]:{}", get_port());
 
     let cert = load_certs(PathBuf::from(get_cert()).as_path())?;
-    let key = load_key(PathBuf::from(get_cert()).as_path())?;
+    let key = load_key(PathBuf::from(get_key()).as_path())?;
 
     let config = rustls::ServerConfig::builder()
         .with_no_client_auth()
