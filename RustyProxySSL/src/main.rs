@@ -1,9 +1,9 @@
+use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufReader, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use clap::Parser;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls_pemfile::{certs, private_key};
 use tokio::net::{TcpListener, TcpStream};
@@ -11,25 +11,12 @@ use tokio_rustls::{rustls, TlsAcceptor, server::TlsStream};
 
 
 
-#[derive(Parser)]
-#[command(name = "RustyProxySSL")]
-#[command(about = "a simple ssl proxy")]
-struct Args {
-    #[arg(long, default_value = "443")]
-    proxy_port: u16,
-    #[arg(long, default_value = "/opt/rustymanager/ssl/cert.pem")]
-    cert: String,
-    #[arg(long, default_value = "/opt/rustymanager/ssl/key.pem")]
-    key: String,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let args = Args::parse();
-    let addr = format!("[::]:{}", args.proxy_port);
+    let addr = format!("[::]:{}", get_port());
 
-    let cert = load_certs(PathBuf::from(args.cert).as_path())?;
-    let key = load_key(PathBuf::from(args.key).as_path())?;
+    let cert = load_certs(PathBuf::from(get_cert()).as_path())?;
+    let key = load_key(PathBuf::from(get_cert()).as_path())?;
 
     let config = rustls::ServerConfig::builder()
         .with_no_client_auth()
@@ -95,4 +82,50 @@ fn load_key(path: &Path) -> io::Result<PrivateKeyDer<'static>> {
             ErrorKind::Other,
             "no private key found".to_string(),
         ))?)
+}
+
+
+fn get_port() -> u16 {
+    let args: Vec<String> = env::args().collect();
+    let mut port = 80;
+
+    for i in 1..args.len() {
+        if args[i] == "--proxy-port" {
+            if i + 1 < args.len() {
+                port = args[i + 1].parse().unwrap_or(443);
+            }
+        }
+    }
+
+    port
+}
+
+fn get_cert() -> String {
+    let args: Vec<String> = env::args().collect();
+    let mut cert = String::from("/opt/rustymanager/ssl/cert.pem");
+
+    for i in 1..args.len() {
+        if args[i] == "--cert" {
+            if i + 1 < args.len() {
+                cert = args[i + 1].clone();
+            }
+        }
+    }
+
+    cert
+}
+
+fn get_key() -> String {
+    let args: Vec<String> = env::args().collect();
+    let mut key = String::from("/opt/rustymanager/ssl/key.pem");
+
+    for i in 1..args.len() {
+        if args[i] == "--key" {
+            if i + 1 < args.len() {
+                key = args[i + 1].clone();
+            }
+        }
+    }
+
+    key
 }

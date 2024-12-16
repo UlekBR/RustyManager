@@ -67,7 +67,7 @@ async fn main() {
     }
 }
 async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let sqlite_conn = Connection::open("/opt/rustymanager/db")?;
+    let sqlite_conn = Connection::open("/opt/rustymanager/db").unwrap();
     let uri = req.uri().to_string();
     println!("{}", uri);
 

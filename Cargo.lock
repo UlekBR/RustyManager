@@ -31,10 +31,8 @@ version = "0.0.0"
 name = "RustyProxySSL"
 version = "0.0.0"
 dependencies = [
- "clap",
  "rustls",
  "rustls-pemfile",
- "rustls-pki-types",
  "tokio",
  "tokio-rustls",
 ]
