@@ -1,7 +1,7 @@
 #!/bin/bash
 # RustyManager Installer
 
-TOTAL_STEPS=14
+TOTAL_STEPS=13
 CURRENT_STEP=0
 
 show_progress() {
@@ -24,7 +24,7 @@ else
     clear
     show_progress "Atualizando repositorios..."
     export DEBIAN_FRONTEND=noninteractive
-    SCRIPT_VERSION="beta"
+    SCRIPT_VERSION="main"
     increment_step
 
     # ---->>>> Verificação do sistema
@@ -255,7 +255,6 @@ username-as-common-name
 plugin $plugin_path login
 duplicate-cn" > /etc/openvpn/server.conf || error_exit "Falha ao criar openvpn server.conf"
 
-    # Iniciar e habilitar o serviço OpenVPN
     echo 1 > /proc/sys/net/ipv4/ip_forward > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
     sed -i '/net.ipv4.ip_forward/s/^#//g' /etc/sysctl.conf > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
     sysctl -p > /dev/null 2>&1 || error_exit "Falha ao habilitar ip forwarding"
