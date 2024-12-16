@@ -50,6 +50,16 @@ struct AnyVpnResponse {
     uuid: String,
 }
 
+
+#[derive(Debug, Serialize, Deserialize)]
+struct UlkCheckuserResponse {
+    username: String,
+    user_connected: String,
+    user_limit: String,
+    remaining_days: String,
+    formatted_expiration_date: String,
+    formatted_expiration_date_for_anymod: String,
+}
 fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     match stream.read(&mut buffer) {
@@ -71,6 +81,9 @@ fn handle_client(mut stream: TcpStream) {
                     } else if uri.contains("check/") {
                         app = "gltunnel";
                         user = uri.split("check/").last().unwrap().split("?").next().unwrap();
+                    } else if uri.contains("user=") {
+                        app = "ulkcheckuser";
+                        user = uri.split("user=").last().unwrap().trim();
                     }
                 } else if  method == "POST" {
                     let post_str = if let Some(pos) = request.rfind('\n') {
@@ -138,6 +151,17 @@ fn handle_client(mut stream: TcpStream) {
                             serde_json::to_string_pretty(&response).expect("Serialization failed")
                         }
 
+                        "ulkcheckuser" => {
+                            let response = UlkCheckuserResponse {
+                                username: user.to_string(),
+                                user_connected: user_data.connections,
+                                user_limit: user_data.limit,
+                                formatted_expiration_date: user_data.expiry_date,
+                                remaining_days: user_data.expiry_days,
+                                formatted_expiration_date_for_anymod: user_data.expiry_date_anymod,
+                            };
+                            serde_json::to_string_pretty(&response).expect("Serialization failed")
+                        }
                         _ => { "".to_string() }
                     };
 
