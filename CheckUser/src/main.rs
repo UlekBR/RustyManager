@@ -50,7 +50,6 @@ struct AnyVpnResponse {
     uuid: String,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 struct UlkCheckuserResponse {
     username: String,
@@ -60,6 +59,7 @@ struct UlkCheckuserResponse {
     formatted_expiration_date: String,
     formatted_expiration_date_for_anymod: String,
 }
+
 fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     match stream.read(&mut buffer) {
