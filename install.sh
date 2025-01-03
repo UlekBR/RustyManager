@@ -81,11 +81,11 @@ else
     case $OS_NAME in
         ubuntu|debian)
             apt-get update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-            apt-get install gnupg curl build-essential git cmake sysstat net-tools sqlite3 libsqlite3-dev zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            apt-get install gnupg curl build-essential git cmake clang sysstat net-tools sqlite3 libsqlite3-dev zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
         almalinux|rocky)
             dnf update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-            dnf install epel-release gnupg2 curl gcc g++ make git cmake sysstat net-tools sqlite sqlite-devel zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+            dnf install epel-release gnupg2 curl gcc g++ make git cmake clang sysstat net-tools sqlite sqlite-devel zip tar iptables ca-certificates -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
             ;;
     esac
     increment_step
@@ -141,6 +141,8 @@ else
     mv -f ./Utils/ssl/cert.pem /opt/rustymanager/ssl/cert.pem > /dev/null 2>&1
     mv -f ./Utils/ssl/key.pem /opt/rustymanager/ssl/key.pem > /dev/null 2>&1
 
+    ## definindo compilador
+    export CC=clang
     cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar RustyManager"
     mv -f ./target/release/SshScript /opt/rustymanager/manager > /dev/null 2>&1
     mv -f ./target/release/CheckUser /opt/rustymanager/checkuser > /dev/null 2>&1
