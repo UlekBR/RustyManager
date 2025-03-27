@@ -47,19 +47,26 @@ async fn handle_client(mut client_stream: TcpStream) -> Result<(), Error> {
         .await?;
 
     let mut addr_proxy = "0.0.0.0:22";
-    let result = timeout(Duration::from_secs(1), peek_stream(&mut client_stream)).await;
+    let result = timeout(Duration::from_secs(1), peek_stream(&mut client_stream)).await
+        .unwrap_or_else(|_| Ok(String::new()));
 
-    if let Ok(Ok(data)) = result {
-        if !data.contains("SSH") {
+    if let Ok(data) = result {
+        if data.contains("SSH") || data.is_empty() {
+            addr_proxy = "0.0.0.0:22";
+        } else {
             addr_proxy = "0.0.0.0:1194";
         }
+    } else {
+        addr_proxy = "0.0.0.0:22";
     }
-
 
     let server_connect = TcpStream::connect(addr_proxy).await;
     if server_connect.is_err() {
+        println!("erro ao iniciar conexão para o proxy ");
         return Ok(());
     }
+
+
 
     let server_stream = server_connect?;
 
