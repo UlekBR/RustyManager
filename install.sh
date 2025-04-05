@@ -1,5 +1,9 @@
 #!/bin/bash
 # RustyManager Installer
+unset TMOUT
+ulimit -t unlimited
+ulimit -v unlimited
+ulimit -f unlimited
 
 TOTAL_STEPS=13
 CURRENT_STEP=0
