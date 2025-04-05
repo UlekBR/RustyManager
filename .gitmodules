@@ -1,0 +1,4 @@
+[submodule "BadVpn"]
+	path = BadVpn
+	url = https://github.com/ambrop72/badvpn
+	shallow = true
